@@ -431,7 +431,8 @@ input:hover, select:hover { border-color: #465349; }
 
 @media (max-width: 760px) {
   .summary-grid { grid-template-columns: 1fr 1fr; }
-  .summary-grid .summary-card:last-child { grid-column: span 2; }
+  .summary-grid .summary-card:last-child { grid-column: auto; }
+  .balances-summary { grid-template-columns: 1fr 1fr; }
   .page-header { align-items: stretch; flex-direction: column; }
 }
 

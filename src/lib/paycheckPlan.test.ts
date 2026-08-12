@@ -187,6 +187,36 @@ describe("paycheckPlan", () => {
     expect(plan.warnings.some((warning) => /custom amount/i.test(warning))).toBe(true);
   });
 
+  it("funds card minimums before float so accounts stay current", () => {
+    const plan = buildPaycheckPlan({
+      accounts,
+      bills: [
+        {
+          id: "rent",
+          name: "Rent",
+          amount: 2700,
+          cadence: "monthly",
+          nextDue: "2026-08-20",
+          active: true,
+        },
+      ],
+      settings: {
+        biweeklyIncome: 3250,
+        nextPayday: "2026-08-14",
+        cashFloat: 500,
+        timeZone: "America/Toronto",
+        configured: true,
+      },
+      asOfDate: "2026-08-12",
+    });
+    // 3250 - 2700 bills = 550 → mins 250 → float only 300 of 500 → no focus
+    expect(plan.minsTotal).toBe(250);
+    expect(plan.float).toBe(300);
+    expect(plan.floatTarget).toBe(500);
+    expect(plan.focusPayment).toBeNull();
+    expect(plan.warnings.some((warning) => /Float short/i.test(warning))).toBe(true);
+  });
+
   it("returns setup prompt when not configured", () => {
     const plan = buildPaycheckPlan({
       accounts,

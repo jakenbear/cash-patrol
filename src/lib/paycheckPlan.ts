@@ -41,9 +41,11 @@ export type PaycheckPlan = {
   windowEnd: string;
   income: number;
   float: number;
+  floatTarget: number;
   billTotal: number;
   billsDue: Array<{ id: string; name: string; amount: number; due: string }>;
   minimums: SuggestedPayment[];
+  minsTotal: number;
   focusPayment: SuggestedPayment | null;
   leftoverCash: number;
   availableForDebt: number;
@@ -248,9 +250,11 @@ export function buildPaycheckPlan(input: {
       windowEnd: addDaysIso(input.asOfDate, 15),
       income: 0,
       float: 0,
+      floatTarget: 0,
       billTotal: 0,
       billsDue: [],
       minimums: [],
+      minsTotal: 0,
       focusPayment: null,
       leftoverCash: 0,
       availableForDebt: 0,
@@ -272,7 +276,7 @@ export function buildPaycheckPlan(input: {
   if (usingOverride) {
     warnings.push(`Using a custom amount for ${windowStart} (default is ${money(settings.biweeklyIncome)}).`);
   }
-  const float = Math.max(0, settings.cashFloat);
+  const floatTarget = Math.max(0, settings.cashFloat);
   const billsDue = billsDueInWindow(input.bills, windowStart, windowEnd);
   const billTotal = billsDue.reduce((sum, bill) => sum + bill.amount, 0);
 
@@ -281,12 +285,15 @@ export function buildPaycheckPlan(input: {
     (account) => account.minPayment === undefined || account.minPayment === null,
   );
   if (missingMins.length > 0) {
-    warnings.push("No minimums entered on some debts — mins treated as $0.");
+    warnings.push(
+      "Enter each card’s minimum in Setup → Accounts so survival mins are planned.",
+    );
   }
 
-  let remaining = income - billTotal - float;
+  // Order: bills → card/loan minimums (survive) → float → focus debt.
+  let remaining = income - billTotal;
   if (remaining < 0) {
-    warnings.push("Bills plus float exceed this paycheck. Cover bills first; float may dip.");
+    warnings.push("Bills alone exceed this paycheck. Cover bills first.");
   }
 
   const minimums: SuggestedPayment[] = [];
@@ -295,7 +302,7 @@ export function buildPaycheckPlan(input: {
     if (min <= 0) continue;
     const amount = Math.min(min, Math.max(0, remaining));
     if (amount <= 0) {
-      warnings.push(`Not enough left after bills/float to cover the ${account.name} minimum.`);
+      warnings.push(`Not enough left after bills to cover the ${account.name} minimum.`);
       break;
     }
     minimums.push({
@@ -308,6 +315,15 @@ export function buildPaycheckPlan(input: {
     if (amount < min) {
       warnings.push(`Only part of the ${account.name} minimum fits this paycheck.`);
     }
+  }
+
+  const minsTotal = minimums.reduce((sum, item) => sum + item.amount, 0);
+  const float = Math.min(floatTarget, Math.max(0, remaining));
+  remaining -= float;
+  if (float < floatTarget) {
+    warnings.push(
+      `Float short: keeping ${money(float)} of ${money(floatTarget)} so card minimums stay covered.`,
+    );
   }
 
   const availableForDebt = Math.max(0, income - billTotal - float);
@@ -333,13 +349,15 @@ export function buildPaycheckPlan(input: {
   }
 
   const leftoverCash = Math.max(0, remaining) + float;
+  const minsLabel =
+    minsTotal > 0 ? `pay ${money(minsTotal)} in minimums` : "no minimums entered yet";
   const focusLabel = focusPayment
     ? `put ${money(focusPayment.amount)} on ${focusPayment.accountName}`
     : debtAccounts.length === 0
       ? "no debt payments needed"
-      : "cover minimums only";
+      : "no extra for focus this cheque";
 
-  const summary = `After float, ${focusLabel}; keep ${money(float)} in cash.`;
+  const summary = `Survive first: ${minsLabel}, then ${focusLabel}; keep ${money(float)} float.`;
 
   return {
     ready: true,
@@ -347,9 +365,11 @@ export function buildPaycheckPlan(input: {
     windowEnd,
     income,
     float,
+    floatTarget,
     billTotal,
     billsDue,
     minimums,
+    minsTotal,
     focusPayment,
     leftoverCash,
     availableForDebt: Math.max(0, availableForDebt),

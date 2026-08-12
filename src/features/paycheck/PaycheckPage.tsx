@@ -73,10 +73,19 @@ export function PaycheckPage({
             <span>Bills due</span>
           </div>
         </div>
+        <div className="summary-card tone-orange">
+          <div>
+            <strong>{formatMoney(plan.minsTotal)}</strong>
+            <span>Card mins</span>
+          </div>
+        </div>
         <div className="summary-card tone-green">
           <div>
             <strong>{formatMoney(plan.float)}</strong>
-            <span>Keep as float</span>
+            <span>
+              Float
+              {plan.float < plan.floatTarget ? ` / ${formatMoney(plan.floatTarget)}` : ""}
+            </span>
           </div>
         </div>
       </div>
@@ -113,12 +122,22 @@ export function PaycheckPage({
         <div className="section-heading">
           <h2>Suggested payments</h2>
         </div>
+        <p className="muted">Minimums first so cards stay current, then extra to the focus debt.</p>
         <ul className="simple-list">
+          {plan.minimums.length === 0 && (
+            <li>
+              <span>
+                Card minimums
+                <small>Add each minimum in Setup → Accounts (pencil)</small>
+              </span>
+              <strong>{formatMoney(0)}</strong>
+            </li>
+          )}
           {plan.minimums.map((payment) => (
             <li key={`min-${payment.accountId}`}>
               <span>
                 {payment.accountName}
-                <small>Minimum</small>
+                <small>Minimum · survive</small>
               </span>
               <strong>{formatMoney(payment.amount)}</strong>
             </li>
@@ -127,7 +146,7 @@ export function PaycheckPage({
             <li className="focus-row">
               <span>
                 {plan.focusPayment.accountName}
-                <small>Focus · priority #1</small>
+                <small>Focus · pay down</small>
               </span>
               <strong>{formatMoney(plan.focusPayment.amount)}</strong>
             </li>
@@ -135,7 +154,7 @@ export function PaycheckPage({
             <li>
               <span>
                 Focus payment
-                <small>None this cycle</small>
+                <small>None left after mins / bills</small>
               </span>
               <strong>{formatMoney(0)}</strong>
             </li>
