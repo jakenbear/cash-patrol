@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { formatMoney, type CashSeedAlert } from "../../lib/paycheckPlan";
 
 export function CashSeedAlerts({ alerts }: { alerts: CashSeedAlert[] }) {
@@ -33,5 +34,26 @@ export function CashSeedAlerts({ alerts }: { alerts: CashSeedAlert[] }) {
         ))}
       </ul>
     </section>
+  );
+}
+
+/** Compact home nudge — full detail lives on Paycheck. */
+export function CashSeedBanner({ alerts }: { alerts: CashSeedAlert[] }) {
+  if (alerts.length === 0) return null;
+
+  const totalShortfall = alerts.reduce((sum, alert) => sum + alert.shortfall, 0);
+  const label =
+    alerts.length === 1
+      ? `Seed ${alerts[0]!.cashAccountName} · ${formatMoney(alerts[0]!.shortfall)}`
+      : `Seed ${alerts.length} cash accounts · ${formatMoney(totalShortfall)}`;
+
+  return (
+    <Link className="seed-banner" to="/paycheck" aria-live="polite">
+      <span className="seed-banner-copy">
+        <strong>Cash seed</strong>
+        <span>{label}</span>
+      </span>
+      <span className="seed-banner-action">Paycheck</span>
+    </Link>
   );
 }

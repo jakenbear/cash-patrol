@@ -525,27 +525,57 @@ button.summary-card {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  padding: 1.05rem 1.2rem;
+  padding: 0;
   border-bottom: 1px solid var(--line-soft);
   transition: background 0.15s ease;
 }
 .notepad-row:hover { background: rgba(255, 255, 255, 0.02); }
 .notepad-row:last-child { border-bottom: 0; }
+.notepad-row.is-editing { padding: 1.05rem 1.2rem; background: rgba(62, 207, 142, 0.05); }
+.notepad-row-hit {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0;
+  padding: 1.05rem 1.2rem;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.notepad-row.is-tappable:hover .balance-button,
+.notepad-row-hit:hover .balance-button {
+  color: var(--accent);
+  border-bottom-color: rgba(62, 207, 142, 0.55);
+}
+.notepad-row.is-tappable:active { background: rgba(62, 207, 142, 0.06); }
 .notepad-label { display: grid; gap: .22rem; }
 .notepad-label strong { font: 600 1.05rem "Archivo"; }
 .notepad-label small { color: var(--muted); font-size: .72rem; }
 .notepad-value { display: grid; justify-items: end; gap: .25rem; }
 .balance-button {
   border: 0;
+  border-bottom: 1.5px dashed rgba(255, 255, 255, 0.28);
   background: none;
   color: white;
   font: 700 1.4rem "Archivo";
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+  padding: 0 0 .1rem;
   cursor: pointer;
-  transition: color 0.15s ease;
+  transition: color 0.15s ease, border-bottom-color 0.15s ease;
 }
-.balance-button:hover { color: var(--accent); }
+.tap-hint {
+  color: var(--muted);
+  font-size: .68rem;
+  font-weight: 600;
+  letter-spacing: .04em;
+}
 .delta { font-size: .75rem; font-weight: 700; }
 .delta.down { color: var(--accent); }
 .delta.up { color: var(--orange); }
@@ -762,6 +792,46 @@ button.summary-card {
   font-size: .8rem;
 }
 
+.seed-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .85rem;
+  margin-bottom: 1rem;
+  padding: .7rem .95rem;
+  border: 1px solid rgba(232, 165, 75, 0.35);
+  border-radius: .85rem;
+  background: linear-gradient(145deg, rgba(232, 165, 75, 0.12), rgba(16, 22, 19, 0.9));
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.seed-banner:hover { border-color: rgba(232, 165, 75, 0.55); }
+.seed-banner-copy {
+  display: grid;
+  gap: .15rem;
+  min-width: 0;
+}
+.seed-banner-copy strong {
+  color: var(--orange);
+  font-size: .72rem;
+  font-weight: 800;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+.seed-banner-copy span {
+  color: #d7ddd8;
+  font-size: .88rem;
+  line-height: 1.3;
+}
+.seed-banner-action {
+  flex-shrink: 0;
+  color: var(--accent);
+  font-size: .75rem;
+  font-weight: 800;
+  letter-spacing: .04em;
+}
+
 .forecast-list { list-style: none; margin: 1rem 0 0; padding: 0; display: grid; gap: .75rem; }
 .forecast-list li,
 .paycheque-list li {
@@ -893,7 +963,8 @@ button.summary-card {
   .install-button span { display: none; }
   .install-button { width: 2.6rem; justify-content: center; padding: 0; }
   .page { padding-right: .9rem; padding-left: .9rem; }
-  .notepad-row { align-items: flex-start; flex-direction: column; }
+  .notepad-row.is-editing { align-items: flex-start; flex-direction: column; }
+  .notepad-row-hit { align-items: flex-start; flex-direction: column; }
   .notepad-value { justify-items: start; width: 100%; }
   .inline-edit { justify-content: flex-start; }
   .gap-strip { grid-template-columns: 1fr; gap: .65rem; }

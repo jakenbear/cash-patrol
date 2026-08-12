@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useMutation } from "convex/react";
-import { CashSeedAlerts } from "../alerts/CashSeedAlerts";
+import { CashSeedBanner } from "../alerts/CashSeedAlerts";
 import { patrolApi, type Account, type DashboardData } from "../../lib/api";
 import {
   buildCashGapStatus,
@@ -117,11 +117,11 @@ export function BalancesPage({
         <div>
           <p className="eyebrow">Your notepad</p>
           <h1>Balances</h1>
-          <p className="muted">Cash on top. Credit cards and loans below. Tap a number to overwrite it.</p>
+          <p className="muted">Cash on top. Credit cards and loans below. Tap any balance to overwrite it.</p>
         </div>
       </header>
 
-      <CashSeedAlerts alerts={cashSeedAlerts} />
+      <CashSeedBanner alerts={cashSeedAlerts} />
 
       <div className="summary-grid balances-summary">
         <div className="summary-card tone-green">
@@ -300,46 +300,61 @@ function AccountRow({
 }) {
   const change = delta ? delta.next - delta.previous : null;
   return (
-    <div className="notepad-row">
-      <div className="notepad-label">
-        <strong>{account.name}</strong>
-        <small>{kindLabel(account.kind)}</small>
-      </div>
-      <div className="notepad-value">
-        {isEditing ? (
-          <form
-            className="inline-edit"
-            onSubmit={(event) => {
-              event.preventDefault();
-              onSave();
-            }}
-          >
-            <input
-              inputMode="decimal"
-              value={draft}
-              autoFocus
-              onChange={(event) => onDraft(event.target.value)}
-              aria-label={`${account.name} balance`}
-            />
-            <button className="primary-button compact" type="submit" disabled={saving}>
-              Save
-            </button>
-            <button className="text-button" type="button" onClick={onCancel}>
-              Cancel
-            </button>
-          </form>
-        ) : (
-          <button className="balance-button" type="button" onClick={onStartEdit}>
-            {formatMoney(account.balance)}
-          </button>
-        )}
-        {change !== null && change !== 0 && !isEditing && (
-          <span className={change < 0 ? "delta down" : "delta up"}>
-            {change > 0 ? "+" : ""}
-            {formatMoney(change)}
+    <div className={`notepad-row ${isEditing ? "is-editing" : "is-tappable"}`}>
+      {isEditing ? (
+        <>
+          <div className="notepad-label">
+            <strong>{account.name}</strong>
+            <small>{kindLabel(account.kind)}</small>
+          </div>
+          <div className="notepad-value">
+            <form
+              className="inline-edit"
+              onSubmit={(event) => {
+                event.preventDefault();
+                onSave();
+              }}
+            >
+              <input
+                inputMode="decimal"
+                value={draft}
+                autoFocus
+                onChange={(event) => onDraft(event.target.value)}
+                aria-label={`${account.name} balance`}
+              />
+              <button className="primary-button compact" type="submit" disabled={saving}>
+                Save
+              </button>
+              <button className="text-button" type="button" onClick={onCancel}>
+                Cancel
+              </button>
+            </form>
+          </div>
+        </>
+      ) : (
+        <button
+          className="notepad-row-hit"
+          type="button"
+          onClick={onStartEdit}
+          aria-label={`Update ${account.name} balance, currently ${formatMoney(account.balance)}`}
+        >
+          <span className="notepad-label">
+            <strong>{account.name}</strong>
+            <small>{kindLabel(account.kind)}</small>
           </span>
-        )}
-      </div>
+          <span className="notepad-value">
+            <span className="balance-button">{formatMoney(account.balance)}</span>
+            {change !== null && change !== 0 ? (
+              <span className={change < 0 ? "delta down" : "delta up"}>
+                {change > 0 ? "+" : ""}
+                {formatMoney(change)}
+              </span>
+            ) : (
+              <span className="tap-hint">Tap to update</span>
+            )}
+          </span>
+        </button>
+      )}
     </div>
   );
 }
