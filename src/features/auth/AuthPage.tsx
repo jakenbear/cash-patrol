@@ -24,11 +24,13 @@ export function AuthPage() {
       if (/InvalidAccountId/i.test(raw)) {
         setError(
           mode === "signIn"
-            ? "No account yet. Use “Create the owner account” first."
+            ? "No account for that email yet. Create one below if this is your first time."
             : raw,
         );
       } else if (/InvalidSecret/i.test(raw)) {
         setError("Wrong password.");
+      } else if (/restricted to the tracker owner/i.test(raw)) {
+        setError("This email can’t register. Use the account email set up for Cash Patrol.");
       } else {
         setError(raw);
       }
@@ -76,7 +78,7 @@ export function AuthPage() {
           {error && <p className="form-error">{error}</p>}
           <button className="primary-button" type="submit" disabled={busy}>
             <LockKeyhole size={18} aria-hidden="true" />
-            {busy ? "Working…" : mode === "signIn" ? "Sign in" : "Create owner account"}
+            {busy ? "Working…" : mode === "signIn" ? "Sign in" : "Create account"}
           </button>
         </form>
 
@@ -88,11 +90,9 @@ export function AuthPage() {
             setError("");
           }}
         >
-          {mode === "signIn"
-            ? "First visit? Create the owner account"
-            : "Already registered? Sign in"}
+          {mode === "signIn" ? "Need an account? Create one" : "Have an account? Sign in"}
         </button>
-        <p className="auth-note">Only the configured owner email can register.</p>
+        <p className="auth-note">Private app — signup is limited to your email.</p>
       </section>
     </main>
   );
