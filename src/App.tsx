@@ -24,6 +24,7 @@ import { SetupPage } from "./features/setup/SetupPage";
 import { patrolApi, type DashboardData } from "./lib/api";
 import {
   buildPaycheckPlan,
+  buildPaychequeForecasts,
   totalsFromAccounts,
   type PlanAccount,
   type PlanBill,
@@ -153,11 +154,24 @@ function PaycheckRoute({ dashboard }: { dashboard: DashboardData }) {
       }),
     [planAccounts, planBills, dashboard.settings, dashboard.today, dashboard.incomeByPayday],
   );
+  const forecasts = useMemo(
+    () =>
+      buildPaychequeForecasts({
+        accounts: planAccounts,
+        bills: planBills,
+        settings: dashboard.settings,
+        asOfDate: dashboard.today,
+        incomeByPayday: dashboard.incomeByPayday,
+        count: 6,
+      }),
+    [planAccounts, planBills, dashboard.settings, dashboard.today, dashboard.incomeByPayday],
+  );
   const totals = useMemo(() => totalsFromAccounts(planAccounts), [planAccounts]);
 
   return (
     <PaycheckPage
       plan={plan}
+      forecasts={forecasts}
       totals={totals}
       today={dashboard.today}
       defaultIncome={dashboard.settings?.biweeklyIncome ?? 0}

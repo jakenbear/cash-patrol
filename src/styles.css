@@ -373,6 +373,47 @@ input:hover, select:hover { border-color: #465349; }
 .account-list-copy { display: grid; gap: .2rem; min-width: 0; }
 .account-list-copy strong { font: 600 1rem "Archivo"; }
 .account-list-copy small { color: var(--muted); }
+.forecast-list { list-style: none; margin: 1rem 0 0; padding: 0; display: grid; gap: .85rem; }
+.forecast-list li {
+  padding: .95rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: .9rem;
+  background: #101613;
+}
+.forecast-list li.is-current { border-color: rgba(62, 207, 142, 0.35); }
+.forecast-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: .65rem;
+}
+.forecast-meta, .forecast-focus { display: grid; gap: .15rem; }
+.forecast-focus { text-align: right; }
+.forecast-focus strong { color: var(--accent); font: 700 1.15rem "Archivo"; }
+.forecast-meta small, .forecast-focus small { color: var(--muted); }
+.forecast-bar {
+  height: .45rem;
+  margin-bottom: .65rem;
+  border-radius: 999px;
+  background: #1c2621;
+  overflow: hidden;
+}
+.forecast-bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #2f9e6a, var(--accent));
+}
+.forecast-breakdown {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .35rem .85rem;
+  color: var(--muted);
+  font-size: .78rem;
+  font-weight: 600;
+}
+
 .paycheque-list { list-style: none; margin: 1rem 0 0; padding: 0; display: grid; gap: .75rem; }
 .paycheque-list li {
   display: flex;

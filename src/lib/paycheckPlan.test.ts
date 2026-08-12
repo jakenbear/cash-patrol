@@ -4,6 +4,7 @@ import {
   adjustPayDateForWeekend,
   billsDueInWindow,
   buildPaycheckPlan,
+  buildPaychequeForecasts,
   defaultPriorityOrder,
   monthEndTarget,
   paydaysForMonth,
@@ -215,6 +216,36 @@ describe("paycheckPlan", () => {
     expect(plan.floatTarget).toBe(500);
     expect(plan.focusPayment).toBeNull();
     expect(plan.warnings.some((warning) => /Float short/i.test(warning))).toBe(true);
+  });
+
+  it("builds a forward look across upcoming paycheques", () => {
+    const forecasts = buildPaychequeForecasts({
+      accounts,
+      bills: [
+        {
+          id: "rent",
+          name: "Rent",
+          amount: 2150,
+          cadence: "monthly",
+          nextDue: "2026-08-31",
+          active: true,
+        },
+      ],
+      settings: {
+        biweeklyIncome: 3250,
+        nextPayday: "2026-08-14",
+        cashFloat: 500,
+        timeZone: "America/Toronto",
+        configured: true,
+      },
+      asOfDate: "2026-08-12",
+      count: 2,
+    });
+    expect(forecasts).toHaveLength(2);
+    expect(forecasts[0].payday).toBe("2026-08-14");
+    expect(forecasts[1].payday).toBe("2026-08-31");
+    expect(forecasts[1].billTotal).toBe(2150);
+    expect(forecasts[0].focusAmount).toBeGreaterThan(forecasts[1].focusAmount);
   });
 
   it("returns setup prompt when not configured", () => {

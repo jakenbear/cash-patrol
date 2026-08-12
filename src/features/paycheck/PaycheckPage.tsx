@@ -7,16 +7,19 @@ import {
   formatMoney,
   listUpcomingPaydays,
   type PaycheckPlan,
+  type PaychequeForecast,
 } from "../../lib/paycheckPlan";
 
 export function PaycheckPage({
   plan,
+  forecasts,
   totals,
   today,
   defaultIncome,
   incomeByPayday,
 }: {
   plan: PaycheckPlan;
+  forecasts: PaychequeForecast[];
   totals: { cash: number; debt: number };
   today: string;
   defaultIncome: number;
@@ -97,6 +100,8 @@ export function PaycheckPage({
         currentPayday={plan.windowStart}
       />
 
+      <LookAhead forecasts={forecasts} currentPayday={plan.windowStart} />
+
       <section className="panel stack-section">
         <div className="section-heading">
           <h2>Bills in this window</h2>
@@ -174,6 +179,69 @@ export function PaycheckPage({
         Current cash on hand: {formatMoney(totals.cash)}. Total debt: {formatMoney(totals.debt)}.
       </p>
     </div>
+  );
+}
+
+function LookAhead({
+  forecasts,
+  currentPayday,
+}: {
+  forecasts: PaychequeForecast[];
+  currentPayday: string;
+}) {
+  if (forecasts.length === 0) return null;
+  const maxIncome = Math.max(...forecasts.map((item) => item.income), 1);
+
+  return (
+    <section className="panel stack-section">
+      <div className="section-heading">
+        <h2>Looking ahead</h2>
+      </div>
+      <p className="muted">
+        What each upcoming cheque can do after bills, card mins, and float. Bonuses you set above
+        are included.
+      </p>
+      <ul className="forecast-list">
+        {forecasts.map((item) => {
+          const focusPct = Math.max(0, Math.min(100, (item.focusAmount / maxIncome) * 100));
+          const isCurrent = item.payday === currentPayday;
+          return (
+            <li key={item.payday} className={isCurrent ? "is-current" : undefined}>
+              <div className="forecast-top">
+                <div className="forecast-meta">
+                  <strong>{item.payday}</strong>
+                  <small>
+                    → {item.windowEnd}
+                    {isCurrent ? " · this cheque" : ""}
+                    {item.customIncome ? " · bonus/custom" : ""}
+                  </small>
+                </div>
+                <div className="forecast-focus">
+                  <strong>{formatMoney(item.focusAmount)}</strong>
+                  <small>{item.focusName ? `to ${item.focusName}` : "to focus"}</small>
+                </div>
+              </div>
+              <div
+                className="forecast-bar"
+                role="img"
+                aria-label={`Focus ${formatMoney(item.focusAmount)} of ${formatMoney(item.income)} income`}
+              >
+                <span style={{ width: `${focusPct}%` }} />
+              </div>
+              <div className="forecast-breakdown">
+                <span>In {formatMoney(item.income)}</span>
+                <span>Bills {formatMoney(item.billTotal)}</span>
+                <span>Mins {formatMoney(item.minsTotal)}</span>
+                <span>
+                  Float {formatMoney(item.float)}
+                  {item.float < item.floatTarget ? `/${formatMoney(item.floatTarget)}` : ""}
+                </span>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }
 

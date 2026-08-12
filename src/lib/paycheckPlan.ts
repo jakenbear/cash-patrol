@@ -394,3 +394,52 @@ export function totalsFromAccounts(accounts: PlanAccount[]) {
 export function formatMoney(value: number): string {
   return money(value);
 }
+
+export type PaychequeForecast = {
+  payday: string;
+  windowEnd: string;
+  income: number;
+  billTotal: number;
+  minsTotal: number;
+  float: number;
+  floatTarget: number;
+  focusAmount: number;
+  focusName: string | null;
+  customIncome: boolean;
+};
+
+/** Forward look for the next N paycheques using the same plan rules. */
+export function buildPaychequeForecasts(input: {
+  accounts: PlanAccount[];
+  bills: PlanBill[];
+  settings: PlanSettings | null;
+  asOfDate: string;
+  incomeByPayday?: Record<string, number>;
+  count?: number;
+}): PaychequeForecast[] {
+  if (!input.settings?.configured) return [];
+  const paydays = listUpcomingPaydays(input.asOfDate, input.count ?? 6);
+  return paydays.map((payday) => {
+    const plan = buildPaycheckPlan({
+      accounts: input.accounts,
+      bills: input.bills,
+      settings: input.settings,
+      asOfDate: payday,
+      incomeByPayday: input.incomeByPayday,
+    });
+    return {
+      payday: plan.windowStart,
+      windowEnd: plan.windowEnd,
+      income: plan.income,
+      billTotal: plan.billTotal,
+      minsTotal: plan.minsTotal,
+      float: plan.float,
+      floatTarget: plan.floatTarget,
+      focusAmount: plan.focusPayment?.amount ?? 0,
+      focusName: plan.focusPayment?.accountName ?? null,
+      customIncome:
+        input.incomeByPayday !== undefined &&
+        Object.prototype.hasOwnProperty.call(input.incomeByPayday, plan.windowStart),
+    };
+  });
+}
