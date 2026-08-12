@@ -292,6 +292,44 @@ describe("paycheckPlan", () => {
     expect(alerts[0].bills.map((bill) => bill.name)).toEqual(["Car Payment"]);
   });
 
+  it("keeps cash seed alerts inside the active pay cycle only", () => {
+    const alerts = buildCashSeedAlerts({
+      accounts: [
+        {
+          id: "meridian",
+          name: "Meridian",
+          kind: "cash",
+          balance: 32,
+          priority: 1,
+          includeInPaydown: false,
+        },
+      ],
+      bills: [
+        {
+          id: "car",
+          name: "Car Payment",
+          amount: 387.84,
+          cadence: "biweekly",
+          nextDue: "2026-08-21",
+          active: true,
+          cashAccountId: "meridian",
+        },
+        {
+          id: "ins",
+          name: "Car Insurance",
+          amount: 206.36,
+          cadence: "monthly",
+          nextDue: "2026-09-10",
+          active: true,
+          cashAccountId: "meridian",
+        },
+      ],
+      // Mid-cycle after Aug 14 payday: still Aug 14→31, not the rent cycle
+      asOfDate: "2026-08-20",
+    });
+    expect(alerts[0]?.bills.map((bill) => bill.name)).toEqual(["Car Payment"]);
+  });
+
   it("returns setup prompt when not configured", () => {
     const plan = buildPaycheckPlan({
       accounts,

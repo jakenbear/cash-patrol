@@ -219,17 +219,35 @@ export type CashSeedAlert = {
 /**
  * Alerts when auto-withdraw bills are coming up and the linked cash account
  * does not hold enough to cover them.
- * Horizon is the current paycheque cycle only (this payday → next payday).
+ *
+ * One paycheque cycle only:
+ * - If anything auto-withdraws before the next payday, alert on that remainder.
+ * - Otherwise alert on the next full payday→payday cycle.
  */
 export function buildCashSeedAlerts(input: {
   accounts: PlanAccount[];
   bills: PlanBill[];
   asOfDate: string;
-  /** Exclusive end date; defaults to the end of the current pay window. */
+  /** Exclusive end date override for tests. */
   horizonEnd?: string;
 }): CashSeedAlert[] {
-  const { windowEnd } = upcomingPayWindow(input.asOfDate);
-  const horizonEnd = input.horizonEnd ?? windowEnd;
+  const onOrAfterToday = listUpcomingPaydays(input.asOfDate, 2);
+  const remainderEnd =
+    onOrAfterToday[0] === input.asOfDate
+      ? (onOrAfterToday[1] ?? addDaysIso(input.asOfDate, 15))
+      : (onOrAfterToday[0] ?? addDaysIso(input.asOfDate, 15));
+
+  const remainderBills = collectLinkedDues(input.bills, input.asOfDate, remainderEnd);
+  const useFullNextCycle = remainderBills.length === 0 && onOrAfterToday[0] !== input.asOfDate;
+  const horizonStart = useFullNextCycle
+    ? (onOrAfterToday[0] ?? input.asOfDate)
+    : input.asOfDate;
+  const horizonEnd =
+    input.horizonEnd ??
+    (useFullNextCycle
+      ? (onOrAfterToday[1] ?? addDaysIso(horizonStart, 15))
+      : remainderEnd);
+
   const cashById = new Map(
     input.accounts
       .filter((account) => account.kind === "cash")
@@ -245,23 +263,17 @@ export function buildCashSeedAlerts(input: {
     }
   >();
 
-  for (const bill of input.bills) {
-    if (!bill.active || !bill.cashAccountId) continue;
-    const cashAccount = cashById.get(bill.cashAccountId);
+  for (const due of collectLinkedDues(input.bills, horizonStart, horizonEnd)) {
+    const cashAccount = cashById.get(due.cashAccountId);
     if (!cashAccount) continue;
-
-    const dues = billOccurrencesInWindow(bill, input.asOfDate, horizonEnd);
-    if (dues.length === 0) continue;
 
     let bucket = grouped.get(cashAccount.id);
     if (!bucket) {
       bucket = { account: cashAccount, needed: 0, bills: [] };
       grouped.set(cashAccount.id, bucket);
     }
-    for (const due of dues) {
-      bucket.needed += bill.amount;
-      bucket.bills.push({ name: bill.name, amount: bill.amount, due });
-    }
+    bucket.needed += due.amount;
+    bucket.bills.push({ name: due.name, amount: due.amount, due: due.due });
   }
 
   const alerts: CashSeedAlert[] = [];
@@ -281,6 +293,26 @@ export function buildCashSeedAlerts(input: {
   }
 
   return alerts.sort((a, b) => b.shortfall - a.shortfall || a.cashAccountName.localeCompare(b.cashAccountName));
+}
+
+function collectLinkedDues(
+  bills: PlanBill[],
+  windowStart: string,
+  windowEnd: string,
+): Array<{ name: string; amount: number; due: string; cashAccountId: string }> {
+  const dues: Array<{ name: string; amount: number; due: string; cashAccountId: string }> = [];
+  for (const bill of bills) {
+    if (!bill.active || !bill.cashAccountId) continue;
+    for (const due of billOccurrencesInWindow(bill, windowStart, windowEnd)) {
+      dues.push({
+        name: bill.name,
+        amount: bill.amount,
+        due,
+        cashAccountId: bill.cashAccountId,
+      });
+    }
+  }
+  return dues;
 }
 
 export function sortPaydownAccounts(accounts: PlanAccount[]): PlanAccount[] {
