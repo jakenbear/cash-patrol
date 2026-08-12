@@ -562,19 +562,13 @@ button.summary-card {
   border-bottom: 1.5px dashed rgba(255, 255, 255, 0.28);
   background: none;
   color: white;
-  font: 700 1.4rem "Archivo";
+  font: 700 1.55rem "Archivo";
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
   line-height: 1.15;
   padding: 0 0 .1rem;
   cursor: pointer;
   transition: color 0.15s ease, border-bottom-color 0.15s ease;
-}
-.tap-hint {
-  color: var(--muted);
-  font-size: .68rem;
-  font-weight: 600;
-  letter-spacing: .04em;
 }
 .delta { font-size: .75rem; font-weight: 700; }
 .delta.down { color: var(--accent); }

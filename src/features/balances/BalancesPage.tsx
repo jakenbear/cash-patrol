@@ -344,13 +344,11 @@ function AccountRow({
           </span>
           <span className="notepad-value">
             <span className="balance-button">{formatMoney(account.balance)}</span>
-            {change !== null && change !== 0 ? (
+            {change !== null && change !== 0 && (
               <span className={change < 0 ? "delta down" : "delta up"}>
                 {change > 0 ? "+" : ""}
                 {formatMoney(change)}
               </span>
-            ) : (
-              <span className="tap-hint">Tap to update</span>
             )}
           </span>
         </button>
