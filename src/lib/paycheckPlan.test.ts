@@ -342,7 +342,7 @@ describe("paycheckPlan", () => {
     expect(plan.warnings[0]).toMatch(/not configured/i);
   });
 
-  it("sorts by APR when present", () => {
+  it("sorts by APR when avalanche strategy is set", () => {
     const withApr = accounts.map((account) =>
       account.id === "cap"
         ? { ...account, apr: 22 }
@@ -350,8 +350,26 @@ describe("paycheckPlan", () => {
           ? { ...account, apr: 19 }
           : account,
     );
-    const ordered = sortPaydownAccounts(withApr);
+    const ordered = sortPaydownAccounts(withApr, "avalanche");
     expect(ordered[0].name).toBe("Cap one");
+  });
+
+  it("uses priority when APRs match under avalanche", () => {
+    const withApr = accounts.map((account) =>
+      account.kind === "credit" ? { ...account, apr: 19.9 } : account,
+    );
+    const ordered = sortPaydownAccounts(withApr, "avalanche");
+    expect(ordered.map((account) => account.name)).toEqual(["CC Card", "Cap one"]);
+  });
+
+  it("sorts snowball by smallest balance", () => {
+    const ordered = sortPaydownAccounts(accounts, "snowball");
+    expect(ordered[0].name).toBe("Cap one");
+  });
+
+  it("uses manual priority order", () => {
+    const ordered = sortPaydownAccounts(accounts, "manual");
+    expect(ordered.map((account) => account.name)).toEqual(["CC Card", "Cap one"]);
   });
 
   it("computes totals", () => {

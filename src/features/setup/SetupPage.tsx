@@ -1,12 +1,16 @@
 import { useMemo, useState, type FormEvent } from "react";
 import { useMutation } from "convex/react";
 import { ArrowDown, ArrowUp, Pencil, Trash2 } from "lucide-react";
-import { patrolApi, type DashboardData } from "../../lib/api";
+import { patrolApi, type DashboardData, type PaydownStrategy } from "../../lib/api";
 import {
   formatMoney,
   nextBillOccurrence,
+  normalizePaydownStrategy,
+  PAYDOWN_STRATEGY_LABEL,
+  sortPaydownAccounts,
   upcomingPayWindow,
   type AccountKind,
+  type PlanAccount,
 } from "../../lib/paycheckPlan";
 
 export function SetupPage({ dashboard }: { dashboard: DashboardData }) {
@@ -23,13 +27,55 @@ export function SetupPage({ dashboard }: { dashboard: DashboardData }) {
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
 
-  const debtAccounts = useMemo(
-    () =>
-      [...dashboard.accounts]
-        .filter((account) => account.kind === "credit" || account.kind === "loan")
-        .sort((a, b) => a.priority - b.priority || b.balance - a.balance),
-    [dashboard.accounts],
-  );
+  const debtAccounts = useMemo(() => {
+    const debt = dashboard.accounts.filter(
+      (account) => account.kind === "credit" || account.kind === "loan",
+    );
+    const strategy = normalizePaydownStrategy(settings?.paydownStrategy);
+    if (strategy === "manual") {
+      return [...debt].sort((a, b) => a.priority - b.priority || b.balance - a.balance);
+    }
+    const planDebt: PlanAccount[] = debt.map((account) => ({
+      id: account._id,
+      name: account.name,
+      kind: account.kind,
+      balance: account.balance,
+      apr: account.apr,
+      minPayment: account.minPayment,
+      priority: account.priority,
+      includeInPaydown: account.includeInPaydown,
+    }));
+    const orderedIds = sortPaydownAccounts(planDebt, strategy).map((account) => account.id);
+    return [...debt].sort((a, b) => {
+      const ai = orderedIds.indexOf(a._id);
+      const bi = orderedIds.indexOf(b._id);
+      const aRank = ai === -1 ? 999 : ai;
+      const bRank = bi === -1 ? 999 : bi;
+      return aRank - bRank || a.priority - b.priority;
+    });
+  }, [dashboard.accounts, settings?.paydownStrategy]);
+
+  const strategy = normalizePaydownStrategy(settings?.paydownStrategy);
+
+  async function persistStrategy(next: PaydownStrategy) {
+    if (!settings) {
+      setError("Save cash flow first, then pick a paydown strategy.");
+      return;
+    }
+    setError("");
+    try {
+      await saveSettings({
+        biweeklyIncome: settings.biweeklyIncome,
+        nextPayday: settings.nextPayday,
+        cashFloat: settings.cashFloat,
+        timeZone: settings.timeZone,
+        paydownStrategy: next,
+      });
+      setStatus(`Focus strategy: ${PAYDOWN_STRATEGY_LABEL[next]}.`);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not save strategy.");
+    }
+  }
 
   async function onSaveSettings(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -43,6 +89,7 @@ export function SetupPage({ dashboard }: { dashboard: DashboardData }) {
         nextPayday: nextWindow.windowStart,
         cashFloat: Number(form.get("cashFloat")),
         timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+        paydownStrategy: strategy,
       });
       setStatus("Cash flow saved.");
     } catch (caught) {
@@ -114,22 +161,55 @@ export function SetupPage({ dashboard }: { dashboard: DashboardData }) {
       <section className="panel stack-section">
         <div className="section-heading">
           <h2>Paydown priority</h2>
-          <button
-            className="text-button"
-            type="button"
-            onClick={() => void sortByApr({}).then((result) => {
-              setStatus(
-                result.sorted
-                  ? "Priority sorted by highest APR."
-                  : "Add APRs first to auto-sort.",
-              );
-            })}
-          >
-            Sort by APR
-          </button>
+          {strategy === "manual" && (
+            <button
+              className="text-button"
+              type="button"
+              onClick={() =>
+                void sortByApr({}).then((result) => {
+                  setStatus(
+                    result.sorted
+                      ? "List ordered by highest APR (still manual — change strategy to Avalanche to auto-follow APR)."
+                      : "Add APRs first to sort.",
+                  );
+                })
+              }
+            >
+              Sort list by APR
+            </button>
+          )}
         </div>
+        <fieldset className="strategy-fieldset">
+          <legend>Focus strategy</legend>
+          <p className="muted">
+            After bills and every card’s minimum, leftover cash hits one focus account.
+          </p>
+          <div className="strategy-options">
+            {(
+              [
+                ["manual", "Manual — you set the order with arrows"],
+                ["avalanche", "Avalanche — highest APR; ties use your order"],
+                ["snowball", "Snowball — smallest balance first"],
+              ] as const
+            ).map(([value, label]) => (
+              <label key={value} className="strategy-option">
+                <input
+                  type="radio"
+                  name="paydownStrategy"
+                  checked={strategy === value}
+                  onChange={() => void persistStrategy(value)}
+                />
+                <span>{label}</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
         <p className="muted">
-          Minimums are covered first. Leftover cash goes to priority #1.
+          {strategy === "manual"
+            ? "Drag order with arrows. #1 gets all leftover focus cash."
+            : strategy === "avalanche"
+              ? "Enter real APRs when you can. Equal APRs fall back to stored list order (switch to Manual to edit that)."
+              : "Order updates as balances change. Switch to Manual if you want a fixed custom order."}
         </p>
         <ul className="priority-list">
           {debtAccounts.map((account, index) => (
@@ -141,29 +221,33 @@ export function SetupPage({ dashboard }: { dashboard: DashboardData }) {
                 <small>
                   {formatMoney(account.balance)}
                   {account.apr !== undefined ? ` · ${account.apr}% APR` : ""}
-                  {account.minPayment !== undefined ? ` · min ${formatMoney(account.minPayment)}` : ""}
+                  {account.minPayment !== undefined
+                    ? ` · min ${formatMoney(account.minPayment)}`
+                    : ""}
                 </small>
               </div>
-              <div className="priority-actions">
-                <button
-                  className="icon-button"
-                  type="button"
-                  aria-label="Move up"
-                  onClick={() => void movePriority(index, -1)}
-                  disabled={index === 0}
-                >
-                  <ArrowUp aria-hidden="true" />
-                </button>
-                <button
-                  className="icon-button"
-                  type="button"
-                  aria-label="Move down"
-                  onClick={() => void movePriority(index, 1)}
-                  disabled={index === debtAccounts.length - 1}
-                >
-                  <ArrowDown aria-hidden="true" />
-                </button>
-              </div>
+              {strategy === "manual" && (
+                <div className="priority-actions">
+                  <button
+                    className="icon-button"
+                    type="button"
+                    aria-label="Move up"
+                    onClick={() => void movePriority(index, -1)}
+                    disabled={index === 0}
+                  >
+                    <ArrowUp aria-hidden="true" />
+                  </button>
+                  <button
+                    className="icon-button"
+                    type="button"
+                    aria-label="Move down"
+                    onClick={() => void movePriority(index, 1)}
+                    disabled={index === debtAccounts.length - 1}
+                  >
+                    <ArrowDown aria-hidden="true" />
+                  </button>
+                </div>
+              )}
             </li>
           ))}
         </ul>

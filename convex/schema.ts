@@ -51,6 +51,10 @@ export default defineSchema({
     cashFloat: v.number(),
     timeZone: v.string(),
     configured: v.boolean(),
+    /** How leftover cash picks the focus debt after mins. */
+    paydownStrategy: v.optional(
+      v.union(v.literal("manual"), v.literal("avalanche"), v.literal("snowball")),
+    ),
   }).index("by_owner", ["ownerId"]),
   paychequeOverrides: defineTable({
     ownerId: v.id("users"),

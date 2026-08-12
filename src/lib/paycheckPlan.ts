@@ -21,12 +21,15 @@ export type PlanBill = {
   cashAccountId?: string;
 };
 
+export type PaydownStrategy = "manual" | "avalanche" | "snowball";
+
 export type PlanSettings = {
   biweeklyIncome: number;
   nextPayday: string;
   cashFloat: number;
   timeZone: string;
   configured: boolean;
+  paydownStrategy?: PaydownStrategy;
 };
 
 export type SuggestedPayment = {
@@ -50,9 +53,21 @@ export type PaycheckPlan = {
   focusPayment: SuggestedPayment | null;
   leftoverCash: number;
   availableForDebt: number;
+  strategy: PaydownStrategy;
   summary: string;
   warnings: string[];
 };
+
+export const PAYDOWN_STRATEGY_LABEL: Record<PaydownStrategy, string> = {
+  manual: "Manual order",
+  avalanche: "Avalanche (highest APR)",
+  snowball: "Snowball (smallest balance)",
+};
+
+export function normalizePaydownStrategy(value: PaydownStrategy | undefined | null): PaydownStrategy {
+  if (value === "avalanche" || value === "snowball" || value === "manual") return value;
+  return "manual";
+}
 
 const money = (value: number) =>
   value.toLocaleString("en-CA", {
@@ -315,21 +330,28 @@ function collectLinkedDues(
   return dues;
 }
 
-export function sortPaydownAccounts(accounts: PlanAccount[]): PlanAccount[] {
+export function sortPaydownAccounts(
+  accounts: PlanAccount[],
+  strategy: PaydownStrategy = "manual",
+): PlanAccount[] {
   const debt = accounts.filter(
     (account) =>
       account.includeInPaydown &&
       (account.kind === "credit" || account.kind === "loan") &&
       account.balance > 0,
   );
-  const hasApr = debt.some((account) => typeof account.apr === "number" && account.apr > 0);
+
   return [...debt].sort((left, right) => {
-    if (hasApr) {
+    if (strategy === "avalanche") {
       const aprDiff = (right.apr ?? 0) - (left.apr ?? 0);
-      if (aprDiff !== 0) return aprDiff;
+      if (Math.abs(aprDiff) >= 0.01) return aprDiff;
+    }
+    if (strategy === "snowball") {
+      const balDiff = left.balance - right.balance;
+      if (Math.abs(balDiff) >= 0.01) return balDiff;
     }
     if (left.priority !== right.priority) return left.priority - right.priority;
-    return right.balance - left.balance;
+    return right.balance - left.balance || left.name.localeCompare(right.name);
   });
 }
 
@@ -367,11 +389,13 @@ export function buildPaycheckPlan(input: {
       focusPayment: null,
       leftoverCash: 0,
       availableForDebt: 0,
+      strategy: normalizePaydownStrategy(settings?.paydownStrategy),
       summary: "Set your paycheque amount and cash float in Setup to get a plan.",
       warnings: ["Cash flow is not configured yet."],
     };
   }
 
+  const strategy = normalizePaydownStrategy(settings.paydownStrategy);
   const { windowStart, windowEnd } = upcomingPayWindow(input.asOfDate);
 
   const income = effectivePaychequeAmount(
@@ -389,13 +413,13 @@ export function buildPaycheckPlan(input: {
   const billsDue = billsDueInWindow(input.bills, windowStart, windowEnd);
   const billTotal = billsDue.reduce((sum, bill) => sum + bill.amount, 0);
 
-  const debtAccounts = sortPaydownAccounts(input.accounts);
+  const debtAccounts = sortPaydownAccounts(input.accounts, strategy);
   const missingMins = debtAccounts.filter(
     (account) => account.minPayment === undefined || account.minPayment === null,
   );
   if (missingMins.length > 0) {
     warnings.push(
-      "Enter each card’s minimum in Setup → Accounts so survival mins are planned.",
+      `Missing minimums on: ${missingMins.map((account) => account.name).join(", ")}.`,
     );
   }
 
@@ -486,6 +510,7 @@ export function buildPaycheckPlan(input: {
     focusPayment,
     leftoverCash,
     availableForDebt: Math.max(0, availableForDebt),
+    strategy,
     summary,
     warnings,
   };

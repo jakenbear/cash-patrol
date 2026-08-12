@@ -306,6 +306,63 @@ input:hover, select:hover { border-color: #465349; }
 
 .plan-hero { padding: 1.25rem 1.35rem; margin-bottom: 1.25rem; border-color: rgba(62, 207, 142, 0.28); }
 .plan-sentence { margin: 0 0 .75rem; font: 600 1.2rem "Archivo"; line-height: 1.35; letter-spacing: -0.02em; }
+.plan-primary {
+  border-color: rgba(62, 207, 142, 0.28);
+  margin-bottom: 1rem;
+}
+.plan-totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .55rem .9rem;
+  margin-top: 1rem;
+  padding-top: .9rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  color: var(--muted);
+  font-size: .78rem;
+}
+.plan-secondary summary {
+  cursor: pointer;
+  list-style: none;
+  display: grid;
+  gap: .25rem;
+}
+.plan-secondary summary::-webkit-details-marker { display: none; }
+.plan-secondary summary h2 {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+}
+.plan-secondary summary h2::after {
+  content: "▸";
+  color: var(--muted);
+  font-size: .85rem;
+  transition: transform .15s ease;
+}
+.plan-secondary[open] summary h2::after { transform: rotate(90deg); }
+.plan-secondary summary .muted { margin: 0; }
+.plan-secondary .paycheque-list,
+.plan-secondary .forecast-list { margin-top: 1rem; }
+.plan-strategy { margin: -0.35rem 0 1rem; font-size: .8rem; }
+.strategy-fieldset {
+  border: 1px solid var(--line);
+  border-radius: .9rem;
+  padding: .9rem 1rem 1rem;
+  margin: 0 0 1rem;
+}
+.strategy-fieldset legend {
+  padding: 0 .35rem;
+  font: 600 .85rem "Archivo";
+}
+.strategy-options { display: grid; gap: .55rem; margin-top: .65rem; }
+.strategy-option {
+  display: flex;
+  align-items: flex-start;
+  gap: .55rem;
+  font-size: .9rem;
+  cursor: pointer;
+}
+.strategy-option input { margin-top: .2rem; }
 .stack-section { padding: 1.25rem; margin-bottom: 1.25rem; }
 .section-heading {
   display: flex;

@@ -88,6 +88,7 @@ export const seedDefaults = mutation({
         cashFloat: 150,
         timeZone,
         configured: false,
+        paydownStrategy: "manual",
       });
     }
 

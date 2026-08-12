@@ -23,6 +23,8 @@ export type Bill = {
   cashAccountId?: string;
 };
 
+export type PaydownStrategy = "manual" | "avalanche" | "snowball";
+
 export type CashflowSettings = {
   _id: string;
   biweeklyIncome: number;
@@ -30,6 +32,7 @@ export type CashflowSettings = {
   cashFloat: number;
   timeZone: string;
   configured: boolean;
+  paydownStrategy?: PaydownStrategy;
 };
 
 export type BalanceEvent = {
@@ -93,6 +96,7 @@ export const patrolApi = {
       nextPayday: string;
       cashFloat: number;
       timeZone: string;
+      paydownStrategy?: PaydownStrategy;
     },
     string
   >("settings:save"),

@@ -6,6 +6,7 @@ import {
   effectivePaychequeAmount,
   formatMoney,
   listUpcomingPaydays,
+  PAYDOWN_STRATEGY_LABEL,
   type CashSeedAlert,
   type PaycheckPlan,
   type PaychequeForecast,
@@ -56,54 +57,22 @@ export function PaycheckPage({
             {plan.windowStart} → {plan.windowEnd}
           </p>
           <h1>This paycheck</h1>
-          <p className="muted">{plan.summary}</p>
+          <p className="muted">
+            Plan what to do with this deposit. Pay in order, then update Balances yourself.
+          </p>
         </div>
       </header>
 
-      <section className="plan-hero panel">
-        <p className="plan-sentence">{plan.summary}</p>
-        <p className="notice">
-          Pay these amounts yourself, then update Balances. Cash Patrol never changes debt for you.
-        </p>
-      </section>
-
       <CashSeedAlerts alerts={cashSeedAlerts} />
 
-      <div className="summary-grid balances-summary">
-        <div className="summary-card">
-          <div>
-            <strong>{formatMoney(plan.income)}</strong>
-            <span>Income</span>
-          </div>
-        </div>
-        <div className="summary-card">
-          <div>
-            <strong>{formatMoney(plan.billTotal)}</strong>
-            <span>Bills due</span>
-          </div>
-        </div>
-        <div className="summary-card tone-orange">
-          <div>
-            <strong>{formatMoney(plan.minsTotal)}</strong>
-            <span>Card mins</span>
-          </div>
-        </div>
-        <div className="summary-card tone-green">
-          <div>
-            <strong>{formatMoney(plan.float)}</strong>
-            <span>
-              Float
-              {plan.float < plan.floatTarget ? ` / ${formatMoney(plan.floatTarget)}` : ""}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <section className="panel stack-section">
+      <section className="panel stack-section plan-primary">
         <div className="section-heading">
-          <h2>This cheque plan</h2>
+          <h2>Do this with the cheque</h2>
+          <span>{formatMoney(plan.income)} in</span>
         </div>
-        <p className="muted">Pay in order: bills, card mins, float, then focus debt.</p>
+        <p className="muted plan-strategy">
+          Focus: {PAYDOWN_STRATEGY_LABEL[plan.strategy]}
+        </p>
         <ul className="simple-list">
           {plan.billsDue.length === 0 ? (
             <li>
@@ -128,7 +97,7 @@ export function PaycheckPage({
             <li>
               <span>
                 Card minimums
-                <small>Add each minimum in Setup → Accounts (pencil)</small>
+                <small>Add each minimum in Setup → Accounts</small>
               </span>
               <strong>{formatMoney(0)}</strong>
             </li>
@@ -146,7 +115,7 @@ export function PaycheckPage({
           <li>
             <span>
               Cash float
-              <small>Keep to live until next cheque</small>
+              <small>Live until next cheque</small>
             </span>
             <strong>{formatMoney(plan.float)}</strong>
           </li>
@@ -168,16 +137,18 @@ export function PaycheckPage({
             </li>
           )}
         </ul>
+        <div className="plan-totals">
+          <span>Bills {formatMoney(plan.billTotal)}</span>
+          <span>Mins {formatMoney(plan.minsTotal)}</span>
+          <span>
+            Float {formatMoney(plan.float)}
+            {plan.float < plan.floatTarget ? ` / ${formatMoney(plan.floatTarget)}` : ""}
+          </span>
+          <span>
+            Focus {formatMoney(plan.focusPayment?.amount ?? 0)}
+          </span>
+        </div>
       </section>
-
-      <UpcomingPaycheques
-        today={today}
-        defaultIncome={defaultIncome}
-        incomeByPayday={incomeByPayday}
-        currentPayday={plan.windowStart}
-      />
-
-      <LookAhead forecasts={forecasts} currentPayday={plan.windowStart} />
 
       {plan.warnings.length > 0 && (
         <section className="panel warnings">
@@ -187,8 +158,30 @@ export function PaycheckPage({
         </section>
       )}
 
+      <details className="panel stack-section plan-secondary">
+        <summary>
+          <h2>Upcoming pay amounts</h2>
+          <p className="muted">Adjust a cheque for bonuses or one-off income.</p>
+        </summary>
+        <UpcomingPaycheques
+          today={today}
+          defaultIncome={defaultIncome}
+          incomeByPayday={incomeByPayday}
+          currentPayday={plan.windowStart}
+          embedded
+        />
+      </details>
+
+      <details className="panel stack-section plan-secondary">
+        <summary>
+          <h2>Looking ahead</h2>
+          <p className="muted">Next cheques after bills, mins, and float.</p>
+        </summary>
+        <LookAhead forecasts={forecasts} currentPayday={plan.windowStart} embedded />
+      </details>
+
       <p className="notice">
-        Current cash on hand: {formatMoney(totals.cash)}. Total debt: {formatMoney(totals.debt)}.
+        Cash on hand {formatMoney(totals.cash)} · Debt {formatMoney(totals.debt)}
       </p>
     </div>
   );
@@ -197,12 +190,59 @@ export function PaycheckPage({
 function LookAhead({
   forecasts,
   currentPayday,
+  embedded = false,
 }: {
   forecasts: PaychequeForecast[];
   currentPayday: string;
+  embedded?: boolean;
 }) {
   if (forecasts.length === 0) return null;
   const maxIncome = Math.max(...forecasts.map((item) => item.income), 1);
+
+  const body = (
+    <ul className="forecast-list">
+      {forecasts.map((item) => {
+        const focusPct = Math.max(0, Math.min(100, (item.focusAmount / maxIncome) * 100));
+        const isCurrent = item.payday === currentPayday;
+        return (
+          <li key={item.payday} className={isCurrent ? "is-current" : undefined}>
+            <div className="forecast-top">
+              <div className="forecast-meta">
+                <strong>{item.payday}</strong>
+                <small>
+                  → {item.windowEnd}
+                  {isCurrent ? " · this cheque" : ""}
+                  {item.customIncome ? " · bonus/custom" : ""}
+                </small>
+              </div>
+              <div className="forecast-focus">
+                <strong>{formatMoney(item.focusAmount)}</strong>
+                <small>{item.focusName ? `to ${item.focusName}` : "to focus"}</small>
+              </div>
+            </div>
+            <div
+              className="forecast-bar"
+              role="img"
+              aria-label={`Focus ${formatMoney(item.focusAmount)} of ${formatMoney(item.income)} income`}
+            >
+              <span style={{ width: `${focusPct}%` }} />
+            </div>
+            <div className="forecast-breakdown">
+              <span>In {formatMoney(item.income)}</span>
+              <span>Bills {formatMoney(item.billTotal)}</span>
+              <span>Mins {formatMoney(item.minsTotal)}</span>
+              <span>
+                Float {formatMoney(item.float)}
+                {item.float < item.floatTarget ? `/${formatMoney(item.floatTarget)}` : ""}
+              </span>
+            </div>
+          </li>
+        );
+      })}
+    </ul>
+  );
+
+  if (embedded) return body;
 
   return (
     <section className="panel stack-section">
@@ -213,46 +253,7 @@ function LookAhead({
         What each upcoming cheque can do after bills, card mins, and float. Bonuses you set above
         are included.
       </p>
-      <ul className="forecast-list">
-        {forecasts.map((item) => {
-          const focusPct = Math.max(0, Math.min(100, (item.focusAmount / maxIncome) * 100));
-          const isCurrent = item.payday === currentPayday;
-          return (
-            <li key={item.payday} className={isCurrent ? "is-current" : undefined}>
-              <div className="forecast-top">
-                <div className="forecast-meta">
-                  <strong>{item.payday}</strong>
-                  <small>
-                    → {item.windowEnd}
-                    {isCurrent ? " · this cheque" : ""}
-                    {item.customIncome ? " · bonus/custom" : ""}
-                  </small>
-                </div>
-                <div className="forecast-focus">
-                  <strong>{formatMoney(item.focusAmount)}</strong>
-                  <small>{item.focusName ? `to ${item.focusName}` : "to focus"}</small>
-                </div>
-              </div>
-              <div
-                className="forecast-bar"
-                role="img"
-                aria-label={`Focus ${formatMoney(item.focusAmount)} of ${formatMoney(item.income)} income`}
-              >
-                <span style={{ width: `${focusPct}%` }} />
-              </div>
-              <div className="forecast-breakdown">
-                <span>In {formatMoney(item.income)}</span>
-                <span>Bills {formatMoney(item.billTotal)}</span>
-                <span>Mins {formatMoney(item.minsTotal)}</span>
-                <span>
-                  Float {formatMoney(item.float)}
-                  {item.float < item.floatTarget ? `/${formatMoney(item.floatTarget)}` : ""}
-                </span>
-              </div>
-            </li>
-          );
-        })}
-      </ul>
+      {body}
     </section>
   );
 }
@@ -262,11 +263,13 @@ function UpcomingPaycheques({
   defaultIncome,
   incomeByPayday,
   currentPayday,
+  embedded = false,
 }: {
   today: string;
   defaultIncome: number;
   incomeByPayday: Record<string, number>;
   currentPayday: string;
+  embedded?: boolean;
 }) {
   const upsertPaycheque = useMutation(patrolApi.upsertPaycheque);
   const clearPaycheque = useMutation(patrolApi.clearPaycheque);
@@ -329,15 +332,15 @@ function UpcomingPaycheques({
     }
   }
 
-  return (
-    <section className="panel stack-section">
-      <div className="section-heading">
-        <h2>Upcoming paycheques</h2>
-      </div>
-      <p className="muted">
-        Default is {formatMoney(defaultIncome)}. Change a future cheque when income shifts (e.g.
-        after a tax is paid off or a bonus). Saving the default clears that cheque’s custom amount.
-      </p>
+  const body = (
+    <>
+      {!embedded && (
+        <p className="muted">
+          Default is {formatMoney(defaultIncome)}. Change a future cheque when income shifts (e.g.
+          after a tax is paid off or a bonus). Saving the default clears that cheque’s custom
+          amount.
+        </p>
+      )}
       <ul className="paycheque-list">
         {paydays.map((payday) => {
           const isCustom = Object.prototype.hasOwnProperty.call(incomeByPayday, payday);
@@ -384,6 +387,17 @@ function UpcomingPaycheques({
       </ul>
       {status && <p className="notice">{status}</p>}
       {error && <p className="form-error">{error}</p>}
+    </>
+  );
+
+  if (embedded) return body;
+
+  return (
+    <section className="panel stack-section">
+      <div className="section-heading">
+        <h2>Upcoming paycheques</h2>
+      </div>
+      {body}
     </section>
   );
 }

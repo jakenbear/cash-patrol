@@ -17,12 +17,19 @@ export const get = query({
   },
 });
 
+const paydownStrategy = v.union(
+  v.literal("manual"),
+  v.literal("avalanche"),
+  v.literal("snowball"),
+);
+
 export const save = mutation({
   args: {
     biweeklyIncome: v.number(),
     nextPayday: v.string(),
     cashFloat: v.number(),
     timeZone: v.string(),
+    paydownStrategy: v.optional(paydownStrategy),
   },
   handler: async (ctx, args) => {
     const ownerId = await getAuthUserId(ctx);
@@ -50,6 +57,8 @@ export const save = mutation({
       .withIndex("by_owner", (q) => q.eq("ownerId", ownerId))
       .first();
 
+    const strategy = args.paydownStrategy ?? existing?.paydownStrategy ?? "manual";
+
     const payload = {
       ownerId,
       biweeklyIncome: Math.round(args.biweeklyIncome * 100) / 100,
@@ -57,6 +66,7 @@ export const save = mutation({
       cashFloat: Math.round(args.cashFloat * 100) / 100,
       timeZone,
       configured: args.biweeklyIncome > 0,
+      paydownStrategy: strategy,
     };
 
     if (existing) {
