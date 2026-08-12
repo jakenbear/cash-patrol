@@ -144,7 +144,7 @@ export function BalancesPage({
           aria-label={`Mood: ${smile.label}. Tap for another.`}
         >
           <div>
-            <strong className="smile-emoji" aria-hidden="true">
+            <strong className="smile-emoji" aria-hidden="true" key={smile.emoji + smile.label}>
               {smile.emoji}
             </strong>
             <span>{smile.label}</span>

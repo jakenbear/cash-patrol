@@ -28,7 +28,7 @@ export function TrendPage({ dashboard }: { dashboard: DashboardData }) {
         </section>
       ) : (
         <>
-          <div className="summary-grid balances-summary">
+          <div className="summary-grid balances-summary trend-summary">
             <div className="summary-card tone-orange">
               <div>
                 <strong>{formatMoney(latest.debt)}</strong>

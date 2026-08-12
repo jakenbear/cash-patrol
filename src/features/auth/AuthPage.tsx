@@ -40,7 +40,7 @@ export function AuthPage() {
   return (
     <main className="auth-page">
       <section className="auth-card">
-        <div className="brand-mark">
+        <div className="brand-mark" aria-hidden="true">
           <Wallet aria-hidden="true" />
         </div>
         <p className="eyebrow">Balances as truth</p>

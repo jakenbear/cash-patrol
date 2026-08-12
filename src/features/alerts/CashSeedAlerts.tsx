@@ -9,7 +9,7 @@ export function CashSeedAlerts({ alerts }: { alerts: CashSeedAlert[] }) {
         <h2>Cash seed alerts</h2>
       </div>
       <p className="muted">
-        Reminder: seed these cash accounts for auto-withdraws in this pay cycle only.
+        Seed these cash accounts for auto-withdraws in this pay cycle only.
       </p>
       <ul className="alert-list">
         {alerts.map((alert) => (

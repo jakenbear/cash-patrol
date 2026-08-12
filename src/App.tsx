@@ -15,7 +15,7 @@ import {
   Wallet,
   Banknote,
 } from "lucide-react";
-import { BrowserRouter, NavLink, Navigate, Route, Routes } from "react-router-dom";
+import { BrowserRouter, NavLink, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { AuthPage } from "./features/auth/AuthPage";
 import { BalancesPage } from "./features/balances/BalancesPage";
 import { PaycheckPage } from "./features/paycheck/PaycheckPage";
@@ -69,51 +69,68 @@ function Patrol() {
 
   return (
     <BrowserRouter>
-      <div className="app-shell">
-        <header className="topbar">
-          <NavLink to="/" className="wordmark">
-            <span className="brand-mark small">
-              <Wallet aria-hidden="true" />
-            </span>
-            <span>
-              <strong>CASH PATROL</strong>
-              <small>BALANCES</small>
-            </span>
-          </NavLink>
-          <div className="topbar-actions">
-            <InstallButton />
-            <NavLink to="/setup" className="icon-button" aria-label="Setup">
-              <Settings2 aria-hidden="true" />
-            </NavLink>
-            <button
-              className="icon-button"
-              type="button"
-              onClick={() => void signOut()}
-              aria-label="Sign out"
-            >
-              <LogOut aria-hidden="true" />
-            </button>
-          </div>
-        </header>
-
-        <main className="content">
-          <Routes>
-            <Route path="/" element={<BalancesRoute dashboard={dashboard} />} />
-            <Route path="/paycheck" element={<PaycheckRoute dashboard={dashboard} />} />
-            <Route path="/trend" element={<TrendPage dashboard={dashboard} />} />
-            <Route path="/setup" element={<SetupPage dashboard={dashboard} />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </main>
-
-        <nav className="bottom-nav" aria-label="Primary navigation">
-          <NavItem to="/" end icon={Wallet} label="Balances" />
-          <NavItem to="/paycheck" icon={Banknote} label="Paycheck" />
-          <NavItem to="/trend" icon={LineChart} label="Trend" />
-          <NavItem to="/setup" icon={Settings2} label="Setup" />
-        </nav>
-      </div>
+      <PatrolShell dashboard={dashboard} onSignOut={() => void signOut()} />
     </BrowserRouter>
+  );
+}
+
+function PatrolShell({
+  dashboard,
+  onSignOut,
+}: {
+  dashboard: DashboardData;
+  onSignOut: () => void;
+}) {
+  const location = useLocation();
+  const sectionLabel =
+    location.pathname.startsWith("/paycheck")
+      ? "PAYCHECK"
+      : location.pathname.startsWith("/trend")
+        ? "TREND"
+        : location.pathname.startsWith("/setup")
+          ? "SETUP"
+          : "BALANCES";
+
+  return (
+    <div className="app-shell">
+      <header className="topbar">
+        <NavLink to="/" className="wordmark">
+          <span className="brand-mark small">
+            <Wallet aria-hidden="true" />
+          </span>
+          <span>
+            <strong>CASH PATROL</strong>
+            <small key={sectionLabel}>{sectionLabel}</small>
+          </span>
+        </NavLink>
+        <div className="topbar-actions">
+          <InstallButton />
+          <NavLink to="/setup" className="icon-button" aria-label="Setup">
+            <Settings2 aria-hidden="true" />
+          </NavLink>
+          <button className="icon-button" type="button" onClick={onSignOut} aria-label="Sign out">
+            <LogOut aria-hidden="true" />
+          </button>
+        </div>
+      </header>
+
+      <main className="content">
+        <Routes>
+          <Route path="/" element={<BalancesRoute dashboard={dashboard} />} />
+          <Route path="/paycheck" element={<PaycheckRoute dashboard={dashboard} />} />
+          <Route path="/trend" element={<TrendPage dashboard={dashboard} />} />
+          <Route path="/setup" element={<SetupPage dashboard={dashboard} />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </main>
+
+      <nav className="bottom-nav" aria-label="Primary navigation">
+        <NavItem to="/" end icon={Wallet} label="Balances" />
+        <NavItem to="/paycheck" icon={Banknote} label="Paycheck" />
+        <NavItem to="/trend" icon={LineChart} label="Trend" />
+        <NavItem to="/setup" icon={Settings2} label="Setup" />
+      </nav>
+    </div>
   );
 }
 
