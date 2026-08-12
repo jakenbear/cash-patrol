@@ -9,6 +9,42 @@ import {
   type PlanAccount,
 } from "../../lib/paycheckPlan";
 
+const SMILE_BITS = [
+  { emoji: "🦊", label: "Sly progress" },
+  { emoji: "🦦", label: "Keep paddling" },
+  { emoji: "🦝", label: "Trash the debt" },
+  { emoji: "🐱", label: "Nap later" },
+  { emoji: "🐶", label: "Good boy money" },
+  { emoji: "🐸", label: "Hop to it" },
+  { emoji: "🐧", label: "Cool head" },
+  { emoji: "🐻", label: "Bear with it" },
+  { emoji: "🦄", label: "Mythic payoff" },
+  { emoji: "🐝", label: "Busy & buzzing" },
+  { emoji: "🐢", label: "Slow is fine" },
+  { emoji: "🐙", label: "Eight arms, one focus" },
+  { emoji: "🌵", label: "Tough & growing" },
+  { emoji: "🌙", label: "Tonight’s win" },
+  { emoji: "☕", label: "Fuel up" },
+  { emoji: "🎯", label: "One target" },
+  { emoji: "🧭", label: "Stay the course" },
+  { emoji: "🔥", label: "Still lit" },
+  { emoji: "🪴", label: "Growing quietly" },
+  { emoji: "🪩", label: "Debt disco" },
+] as const;
+
+function smileFromSeed(seed: number) {
+  const index = Math.abs(seed) % SMILE_BITS.length;
+  return SMILE_BITS[index]!;
+}
+
+function hashSeed(text: string) {
+  let hash = 0;
+  for (let i = 0; i < text.length; i += 1) {
+    hash = (hash * 31 + text.charCodeAt(i)) | 0;
+  }
+  return hash;
+}
+
 export function BalancesPage({
   dashboard,
   cashSeedAlerts,
@@ -21,6 +57,8 @@ export function BalancesPage({
   const [draft, setDraft] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [smileSeed, setSmileSeed] = useState(() => hashSeed(dashboard.today));
+  const smile = smileFromSeed(smileSeed);
 
   const accounts: PlanAccount[] = dashboard.accounts.map((account) => ({
     id: account._id,
@@ -99,6 +137,19 @@ export function BalancesPage({
             <span>Net</span>
           </div>
         </div>
+        <button
+          type="button"
+          className="summary-card tone-fun smile-card"
+          onClick={() => setSmileSeed((seed) => seed + 1 + Math.floor(Math.random() * 17))}
+          aria-label={`Mood: ${smile.label}. Tap for another.`}
+        >
+          <div>
+            <strong className="smile-emoji" aria-hidden="true">
+              {smile.emoji}
+            </strong>
+            <span>{smile.label}</span>
+          </div>
+        </button>
       </div>
 
       <section className="notepad panel">
