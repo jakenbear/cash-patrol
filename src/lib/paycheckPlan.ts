@@ -459,14 +459,18 @@ export function buildPaycheckPlan(input: {
 
   const leftoverCash = Math.max(0, remaining) + float;
   const minsLabel =
-    minsTotal > 0 ? `pay ${money(minsTotal)} in minimums` : "no minimums entered yet";
+    minsTotal > 0 ? `pay ${money(minsTotal)} in card mins` : "no card mins entered yet";
+  const billsLabel =
+    billTotal > 0
+      ? `pay ${money(billTotal)} in bills (${billsDue.map((bill) => bill.name).join(", ")})`
+      : "no bills in this window";
   const focusLabel = focusPayment
     ? `put ${money(focusPayment.amount)} on ${focusPayment.accountName}`
     : debtAccounts.length === 0
       ? "no debt payments needed"
       : "no extra for focus this cheque";
 
-  const summary = `Survive first: ${minsLabel}, then ${focusLabel}; keep ${money(float)} float.`;
+  const summary = `${billsLabel}; ${minsLabel}; then ${focusLabel}; keep ${money(float)} float.`;
 
   return {
     ready: true,

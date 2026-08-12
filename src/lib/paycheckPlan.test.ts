@@ -168,6 +168,7 @@ describe("paycheckPlan", () => {
     // 2400 - 1200 bills - 150 float - 150 min CC - 100 min Cap = 800 focus
     expect(plan.focusPayment?.amount).toBe(800);
     expect(plan.summary).toContain("CC Card");
+    expect(plan.summary).toMatch(/Rent/i);
   });
 
   it("uses a custom paycheque amount for the upcoming payday", () => {

@@ -99,43 +99,32 @@ export function PaycheckPage({
         </div>
       </div>
 
-      <UpcomingPaycheques
-        today={today}
-        defaultIncome={defaultIncome}
-        incomeByPayday={incomeByPayday}
-        currentPayday={plan.windowStart}
-      />
-
-      <LookAhead forecasts={forecasts} currentPayday={plan.windowStart} />
-
       <section className="panel stack-section">
         <div className="section-heading">
-          <h2>Bills in this window</h2>
+          <h2>This cheque plan</h2>
         </div>
-        {plan.billsDue.length === 0 ? (
-          <p className="muted">No bills marked due in this pay window.</p>
-        ) : (
-          <ul className="simple-list">
-            {plan.billsDue.map((bill) => (
+        <p className="muted">Pay in order: bills, card mins, float, then focus debt.</p>
+        <ul className="simple-list">
+          {plan.billsDue.length === 0 ? (
+            <li>
+              <span>
+                Bills
+                <small>None due in this window</small>
+              </span>
+              <strong>{formatMoney(0)}</strong>
+            </li>
+          ) : (
+            plan.billsDue.map((bill) => (
               <li key={bill.id}>
                 <span>
                   {bill.name}
-                  <small>{bill.due}</small>
+                  <small>Bill · due {bill.due}</small>
                 </span>
                 <strong>{formatMoney(bill.amount)}</strong>
               </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      <section className="panel stack-section">
-        <div className="section-heading">
-          <h2>Suggested payments</h2>
-        </div>
-        <p className="muted">Minimums first so cards stay current, then extra to the focus debt.</p>
-        <ul className="simple-list">
-          {plan.minimums.length === 0 && (
+            ))
+          )}
+          {plan.minimums.length === 0 ? (
             <li>
               <span>
                 Card minimums
@@ -143,16 +132,24 @@ export function PaycheckPage({
               </span>
               <strong>{formatMoney(0)}</strong>
             </li>
+          ) : (
+            plan.minimums.map((payment) => (
+              <li key={`min-${payment.accountId}`}>
+                <span>
+                  {payment.accountName}
+                  <small>Minimum · survive</small>
+                </span>
+                <strong>{formatMoney(payment.amount)}</strong>
+              </li>
+            ))
           )}
-          {plan.minimums.map((payment) => (
-            <li key={`min-${payment.accountId}`}>
-              <span>
-                {payment.accountName}
-                <small>Minimum · survive</small>
-              </span>
-              <strong>{formatMoney(payment.amount)}</strong>
-            </li>
-          ))}
+          <li>
+            <span>
+              Cash float
+              <small>Keep to live until next cheque</small>
+            </span>
+            <strong>{formatMoney(plan.float)}</strong>
+          </li>
           {plan.focusPayment ? (
             <li className="focus-row">
               <span>
@@ -165,13 +162,22 @@ export function PaycheckPage({
             <li>
               <span>
                 Focus payment
-                <small>None left after mins / bills</small>
+                <small>None left after bills / mins / float</small>
               </span>
               <strong>{formatMoney(0)}</strong>
             </li>
           )}
         </ul>
       </section>
+
+      <UpcomingPaycheques
+        today={today}
+        defaultIncome={defaultIncome}
+        incomeByPayday={incomeByPayday}
+        currentPayday={plan.windowStart}
+      />
+
+      <LookAhead forecasts={forecasts} currentPayday={plan.windowStart} />
 
       {plan.warnings.length > 0 && (
         <section className="panel warnings">
