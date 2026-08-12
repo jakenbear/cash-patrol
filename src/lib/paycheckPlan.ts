@@ -516,6 +516,146 @@ export function buildPaycheckPlan(input: {
   };
 }
 
+export function daysBetweenIso(from: string, to: string): number {
+  const start = Date.parse(`${from}T12:00:00Z`);
+  const end = Date.parse(`${to}T12:00:00Z`);
+  if (!Number.isFinite(start) || !Number.isFinite(end)) return 0;
+  return Math.max(0, Math.round((end - start) / 86_400_000));
+}
+
+export type CashGapStatus = {
+  nextPayday: string;
+  daysUntilPayday: number;
+  isPayday: boolean;
+  cash: number;
+  dailyBurn: number | null;
+  tone: "ok" | "tight" | "critical";
+};
+
+/** Cash on hand vs days until the next deposit (after today if today is payday). */
+export function buildCashGapStatus(input: {
+  asOfDate: string;
+  cash: number;
+}): CashGapStatus {
+  const cash = Math.max(0, input.cash);
+  const paydays = listUpcomingPaydays(input.asOfDate, 2);
+  const isPayday = paydays[0] === input.asOfDate;
+  const nextPayday = (isPayday ? paydays[1] : paydays[0]) ?? addDaysIso(input.asOfDate, 15);
+  const daysUntilPayday = daysBetweenIso(input.asOfDate, nextPayday);
+  const dailyBurn =
+    daysUntilPayday > 0 ? Math.round((cash / daysUntilPayday) * 100) / 100 : null;
+
+  let tone: CashGapStatus["tone"] = "ok";
+  if (cash <= 0 || (dailyBurn !== null && dailyBurn < 20) || (daysUntilPayday <= 2 && cash < 80)) {
+    tone = "critical";
+  } else if ((dailyBurn !== null && dailyBurn < 45) || daysUntilPayday <= 5) {
+    tone = "tight";
+  }
+
+  return {
+    nextPayday,
+    daysUntilPayday,
+    isPayday,
+    cash,
+    dailyBurn,
+    tone,
+  };
+}
+
+export type PayoffRunway = {
+  accountId: string;
+  accountName: string;
+  balance: number;
+  cheques: number | null;
+  monthsApprox: number | null;
+  avgAttackPerCheque: number;
+  projectedPayday: string | null;
+  note: string;
+};
+
+/**
+ * Estimate cheques to clear the current focus debt using forecast mins+focus,
+ * then extrapolate with the average attack if the window isn’t long enough.
+ */
+export function buildPayoffRunway(input: {
+  accounts: PlanAccount[];
+  forecasts: PaychequeForecast[];
+  strategy?: PaydownStrategy;
+  asOfDate: string;
+}): PayoffRunway | null {
+  const strategy = normalizePaydownStrategy(input.strategy);
+  const target = sortPaydownAccounts(input.accounts, strategy)[0];
+  if (!target) return null;
+
+  const min = Math.max(0, target.minPayment ?? 0);
+  const attacks = input.forecasts.map((forecast) => {
+    const focus = forecast.focusName === target.name ? forecast.focusAmount : 0;
+    return Math.round((focus + min) * 100) / 100;
+  });
+  const positive = attacks.filter((amount) => amount > 0);
+  const avgAttack =
+    positive.length > 0
+      ? Math.round((positive.reduce((sum, amount) => sum + amount, 0) / positive.length) * 100) / 100
+      : min;
+
+  if (avgAttack <= 0) {
+    return {
+      accountId: target.id,
+      accountName: target.name,
+      balance: target.balance,
+      cheques: null,
+      monthsApprox: null,
+      avgAttackPerCheque: 0,
+      projectedPayday: null,
+      note: "No planned payments on the focus account yet — add mins or free up focus cash.",
+    };
+  }
+
+  let remaining = target.balance;
+  let cheques = 0;
+  let projectedPayday: string | null = null;
+  let cursor = input.asOfDate;
+
+  for (let i = 0; remaining > 0 && cheques < 96; i += 1) {
+    const payment = Math.min(remaining, i < attacks.length ? attacks[i]! : avgAttack);
+    if (payment <= 0) break;
+    remaining = Math.round((remaining - payment) * 100) / 100;
+    cheques += 1;
+    if (i < input.forecasts.length) {
+      projectedPayday = input.forecasts[i]!.payday;
+      cursor = input.forecasts[i]!.payday;
+    } else {
+      cursor = addDaysIso(cursor, 15);
+      projectedPayday = cursor;
+    }
+  }
+
+  if (remaining > 0) {
+    return {
+      accountId: target.id,
+      accountName: target.name,
+      balance: target.balance,
+      cheques: null,
+      monthsApprox: null,
+      avgAttackPerCheque: avgAttack,
+      projectedPayday: null,
+      note: `At ~${money(avgAttack)} per cheque, payoff is beyond a 4-year horizon — boost focus or income.`,
+    };
+  }
+
+  const monthsApprox = Math.round((cheques / 2) * 10) / 10;
+  return {
+    accountId: target.id,
+    accountName: target.name,
+    balance: target.balance,
+    cheques,
+    monthsApprox,
+    avgAttackPerCheque: avgAttack,
+    projectedPayday,
+    note: "Includes planned minimums and focus. Interest not modeled; bonuses you set are included.",
+  };
+}
+
 export function totalsFromAccounts(accounts: PlanAccount[]) {
   const cash = accounts
     .filter((account) => account.kind === "cash")

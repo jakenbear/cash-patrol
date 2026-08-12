@@ -3,6 +3,7 @@ import { useMutation } from "convex/react";
 import { CashSeedAlerts } from "../alerts/CashSeedAlerts";
 import { patrolApi, type Account, type DashboardData } from "../../lib/api";
 import {
+  buildCashGapStatus,
   formatMoney,
   totalsFromAccounts,
   type CashSeedAlert,
@@ -71,6 +72,10 @@ export function BalancesPage({
     includeInPaydown: account.includeInPaydown,
   }));
   const totals = totalsFromAccounts(accounts);
+  const cashGap = useMemo(
+    () => buildCashGapStatus({ asOfDate: dashboard.today, cash: totals.cash }),
+    [dashboard.today, totals.cash],
+  );
 
   const cashAccounts = useMemo(
     () => dashboard.accounts.filter((account) => account.kind === "cash"),
@@ -151,6 +156,37 @@ export function BalancesPage({
           </div>
         </button>
       </div>
+
+      {cashGap && (
+        <section className={`panel gap-strip tone-${cashGap.tone}`} aria-live="polite">
+          <div className="gap-stat">
+            <strong>
+              {cashGap.isPayday ? "Payday" : `${cashGap.daysUntilPayday}d`}
+            </strong>
+            <span>
+              {cashGap.isPayday
+                ? `next ${cashGap.nextPayday}`
+                : `to ${cashGap.nextPayday}`}
+            </span>
+          </div>
+          <div className="gap-stat">
+            <strong>{formatMoney(cashGap.cash)}</strong>
+            <span>Cash on hand</span>
+          </div>
+          <div className="gap-stat">
+            <strong>
+              {cashGap.dailyBurn === null ? "—" : `${formatMoney(cashGap.dailyBurn)}/day`}
+            </strong>
+            <span>
+              {cashGap.tone === "critical"
+                ? "Stretch thin"
+                : cashGap.tone === "tight"
+                  ? "Keep it tight"
+                  : "Cash pace"}
+            </span>
+          </div>
+        </section>
+      )}
 
       <section className="notepad panel">
         <div className="notepad-section-label">Cash</div>

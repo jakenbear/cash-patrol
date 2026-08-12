@@ -6,6 +6,9 @@ import {
   buildCashSeedAlerts,
   buildPaycheckPlan,
   buildPaychequeForecasts,
+  buildCashGapStatus,
+  buildPayoffRunway,
+  daysBetweenIso,
   defaultPriorityOrder,
   monthEndTarget,
   paydaysForMonth,
@@ -379,5 +382,61 @@ describe("paycheckPlan", () => {
       assets: 5900,
       net: 40 + 5900 - 13371,
     });
+  });
+
+  it("counts days between ISO dates", () => {
+    expect(daysBetweenIso("2026-08-12", "2026-08-14")).toBe(2);
+    expect(daysBetweenIso("2026-08-14", "2026-08-14")).toBe(0);
+  });
+
+  it("builds a cash gap status until the next deposit", () => {
+    const gap = buildCashGapStatus({ asOfDate: "2026-08-12", cash: 36 });
+    expect(gap.nextPayday).toBe("2026-08-14");
+    expect(gap.daysUntilPayday).toBe(2);
+    expect(gap.dailyBurn).toBe(18);
+    expect(gap.tone).toBe("critical");
+  });
+
+  it("on payday, counts down to the following cheque", () => {
+    const gap = buildCashGapStatus({ asOfDate: "2026-08-14", cash: 500 });
+    expect(gap.isPayday).toBe(true);
+    expect(gap.nextPayday).toBe("2026-08-31");
+    expect(gap.daysUntilPayday).toBe(17);
+  });
+
+  it("estimates payoff runway from focus pace", () => {
+    const settings = {
+      biweeklyIncome: 2400,
+      nextPayday: "2026-08-14",
+      cashFloat: 150,
+      timeZone: "America/Toronto",
+      configured: true,
+      paydownStrategy: "manual" as const,
+    };
+    const forecasts = buildPaychequeForecasts({
+      accounts,
+      bills: [
+        {
+          id: "rent",
+          name: "Rent",
+          amount: 1200,
+          cadence: "monthly",
+          nextDue: "2026-08-20",
+          active: true,
+        },
+      ],
+      settings,
+      asOfDate: "2026-08-12",
+      count: 12,
+    });
+    const runway = buildPayoffRunway({
+      accounts,
+      forecasts,
+      strategy: "manual",
+      asOfDate: "2026-08-12",
+    });
+    expect(runway?.accountName).toBe("CC Card");
+    expect(runway?.cheques).toBeGreaterThan(0);
+    expect(runway?.avgAttackPerCheque).toBeGreaterThan(0);
   });
 });

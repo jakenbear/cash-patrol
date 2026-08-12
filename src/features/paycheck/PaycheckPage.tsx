@@ -10,12 +10,14 @@ import {
   type CashSeedAlert,
   type PaycheckPlan,
   type PaychequeForecast,
+  type PayoffRunway,
 } from "../../lib/paycheckPlan";
 import { CashSeedAlerts } from "../alerts/CashSeedAlerts";
 
 export function PaycheckPage({
   plan,
   forecasts,
+  runway,
   totals,
   today,
   defaultIncome,
@@ -24,6 +26,7 @@ export function PaycheckPage({
 }: {
   plan: PaycheckPlan;
   forecasts: PaychequeForecast[];
+  runway: PayoffRunway | null;
   totals: { cash: number; debt: number };
   today: string;
   defaultIncome: number;
@@ -149,6 +152,36 @@ export function PaycheckPage({
           </span>
         </div>
       </section>
+
+      {runway && (
+        <section className="panel stack-section runway-panel">
+          <div className="section-heading">
+            <h2>Payoff runway</h2>
+            <span>{runway.accountName}</span>
+          </div>
+          {runway.cheques !== null ? (
+            <>
+              <p className="runway-hero">
+                <strong>~{runway.cheques}</strong> cheques
+                {runway.monthsApprox !== null ? (
+                  <>
+                    {" "}
+                    <span className="muted">(~{runway.monthsApprox} mo)</span>
+                  </>
+                ) : null}
+              </p>
+              <p className="muted">
+                {formatMoney(runway.balance)} on {runway.accountName} · ~{formatMoney(runway.avgAttackPerCheque)}{" "}
+                avg attack / cheque
+                {runway.projectedPayday ? ` · clears around ${runway.projectedPayday}` : ""}
+              </p>
+            </>
+          ) : (
+            <p className="muted">{runway.note}</p>
+          )}
+          {runway.cheques !== null && <p className="notice">{runway.note}</p>}
+        </section>
+      )}
 
       {plan.warnings.length > 0 && (
         <section className="panel warnings">

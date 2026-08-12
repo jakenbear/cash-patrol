@@ -26,6 +26,7 @@ import {
   buildCashSeedAlerts,
   buildPaycheckPlan,
   buildPaychequeForecasts,
+  buildPayoffRunway,
   totalsFromAccounts,
   type PlanAccount,
   type PlanBill,
@@ -195,16 +196,27 @@ function PaycheckRoute({ dashboard }: { dashboard: DashboardData }) {
         settings: dashboard.settings,
         asOfDate: dashboard.today,
         incomeByPayday: dashboard.incomeByPayday,
-        count: 6,
+        count: 12,
       }),
     [planAccounts, planBills, dashboard.settings, dashboard.today, dashboard.incomeByPayday],
+  );
+  const runway = useMemo(
+    () =>
+      buildPayoffRunway({
+        accounts: planAccounts,
+        forecasts,
+        strategy: dashboard.settings?.paydownStrategy,
+        asOfDate: dashboard.today,
+      }),
+    [planAccounts, forecasts, dashboard.settings?.paydownStrategy, dashboard.today],
   );
   const totals = useMemo(() => totalsFromAccounts(planAccounts), [planAccounts]);
 
   return (
     <PaycheckPage
       plan={plan}
-      forecasts={forecasts}
+      forecasts={forecasts.slice(0, 6)}
+      runway={runway}
       totals={totals}
       today={dashboard.today}
       defaultIncome={dashboard.settings?.biweeklyIncome ?? 0}
