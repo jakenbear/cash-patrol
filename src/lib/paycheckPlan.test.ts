@@ -3,6 +3,7 @@ import {
   addDaysIso,
   adjustPayDateForWeekend,
   billsDueInWindow,
+  buildCashSeedAlerts,
   buildPaycheckPlan,
   buildPaychequeForecasts,
   defaultPriorityOrder,
@@ -246,6 +247,39 @@ describe("paycheckPlan", () => {
     expect(forecasts[1].payday).toBe("2026-08-31");
     expect(forecasts[1].billTotal).toBe(2150);
     expect(forecasts[0].focusAmount).toBeGreaterThan(forecasts[1].focusAmount);
+  });
+
+  it("alerts when an auto-withdraw bill needs more cash seeded", () => {
+    const alerts = buildCashSeedAlerts({
+      accounts: [
+        {
+          id: "meridian",
+          name: "Meridian",
+          kind: "cash",
+          balance: 32,
+          priority: 1,
+          includeInPaydown: false,
+        },
+        ...accounts.filter((account) => account.kind !== "cash"),
+      ],
+      bills: [
+        {
+          id: "car",
+          name: "Car Payment",
+          amount: 387.84,
+          cadence: "biweekly",
+          nextDue: "2026-08-21",
+          active: true,
+          cashAccountId: "meridian",
+        },
+      ],
+      asOfDate: "2026-08-12",
+      horizonEnd: "2026-08-31",
+    });
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0].cashAccountName).toBe("Meridian");
+    expect(alerts[0].needed).toBe(387.84);
+    expect(alerts[0].shortfall).toBe(355.84);
   });
 
   it("returns setup prompt when not configured", () => {

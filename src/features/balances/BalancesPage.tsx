@@ -1,9 +1,21 @@
 import { useMemo, useState } from "react";
 import { useMutation } from "convex/react";
+import { CashSeedAlerts } from "../alerts/CashSeedAlerts";
 import { patrolApi, type Account, type DashboardData } from "../../lib/api";
-import { formatMoney, totalsFromAccounts, type PlanAccount } from "../../lib/paycheckPlan";
+import {
+  formatMoney,
+  totalsFromAccounts,
+  type CashSeedAlert,
+  type PlanAccount,
+} from "../../lib/paycheckPlan";
 
-export function BalancesPage({ dashboard }: { dashboard: DashboardData }) {
+export function BalancesPage({
+  dashboard,
+  cashSeedAlerts,
+}: {
+  dashboard: DashboardData;
+  cashSeedAlerts: CashSeedAlert[];
+}) {
   const updateBalance = useMutation(patrolApi.updateBalance);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
@@ -65,6 +77,8 @@ export function BalancesPage({ dashboard }: { dashboard: DashboardData }) {
           <p className="muted">Cash on top. Credit cards and loans below. Tap a number to overwrite it.</p>
         </div>
       </header>
+
+      <CashSeedAlerts alerts={cashSeedAlerts} />
 
       <div className="summary-grid balances-summary">
         <div className="summary-card tone-green">

@@ -373,6 +373,37 @@ input:hover, select:hover { border-color: #465349; }
 .account-list-copy { display: grid; gap: .2rem; min-width: 0; }
 .account-list-copy strong { font: 600 1rem "Archivo"; }
 .account-list-copy small { color: var(--muted); }
+.alert-panel {
+  padding: 1.15rem 1.25rem;
+  margin-bottom: 1.25rem;
+  border-color: rgba(240, 113, 120, 0.45);
+  background: linear-gradient(160deg, rgba(240, 113, 120, 0.12), #121815 55%);
+}
+.alert-list { list-style: none; margin: .85rem 0 0; padding: 0; display: grid; gap: .85rem; }
+.alert-list > li {
+  padding: .75rem 0 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+.alert-list > li:first-child { border-top: 0; padding-top: 0; }
+.alert-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: .25rem;
+}
+.alert-shortfall { color: #ff8b93; font-size: .85rem; font-weight: 800; }
+.alert-list small { color: var(--muted); }
+.alert-bills {
+  list-style: none;
+  margin: .45rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: .2rem;
+  color: #d7ddd8;
+  font-size: .8rem;
+}
+
 .forecast-list { list-style: none; margin: 1rem 0 0; padding: 0; display: grid; gap: .85rem; }
 .forecast-list li {
   padding: .95rem 1rem;

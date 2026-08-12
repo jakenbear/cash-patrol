@@ -20,6 +20,7 @@ export type Bill = {
   cadence: "biweekly" | "monthly";
   nextDue: string;
   active: boolean;
+  cashAccountId?: string;
 };
 
 export type CashflowSettings = {
@@ -104,6 +105,7 @@ export const patrolApi = {
       cadence: "biweekly" | "monthly";
       nextDue: string;
       active: boolean;
+      cashAccountId?: string;
     },
     string
   >("bills:upsert"),

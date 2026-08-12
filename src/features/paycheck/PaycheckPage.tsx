@@ -6,9 +6,11 @@ import {
   effectivePaychequeAmount,
   formatMoney,
   listUpcomingPaydays,
+  type CashSeedAlert,
   type PaycheckPlan,
   type PaychequeForecast,
 } from "../../lib/paycheckPlan";
+import { CashSeedAlerts } from "../alerts/CashSeedAlerts";
 
 export function PaycheckPage({
   plan,
@@ -17,6 +19,7 @@ export function PaycheckPage({
   today,
   defaultIncome,
   incomeByPayday,
+  cashSeedAlerts,
 }: {
   plan: PaycheckPlan;
   forecasts: PaychequeForecast[];
@@ -24,6 +27,7 @@ export function PaycheckPage({
   today: string;
   defaultIncome: number;
   incomeByPayday: Record<string, number>;
+  cashSeedAlerts: CashSeedAlert[];
 }) {
   if (!plan.ready) {
     return (
@@ -62,6 +66,8 @@ export function PaycheckPage({
           Pay these amounts yourself, then update Balances. Cash Patrol never changes debt for you.
         </p>
       </section>
+
+      <CashSeedAlerts alerts={cashSeedAlerts} />
 
       <div className="summary-grid balances-summary">
         <div className="summary-card">

@@ -105,6 +105,7 @@ export function SetupPage({ dashboard }: { dashboard: DashboardData }) {
 
       <BillsEditor
         bills={dashboard.bills}
+        cashAccounts={dashboard.accounts.filter((account) => account.kind === "cash")}
         today={dashboard.today}
         onUpsert={upsertBill}
         onRemove={removeBill}
@@ -182,11 +183,13 @@ export function SetupPage({ dashboard }: { dashboard: DashboardData }) {
 
 function BillsEditor({
   bills,
+  cashAccounts,
   today,
   onUpsert,
   onRemove,
 }: {
   bills: DashboardData["bills"];
+  cashAccounts: DashboardData["accounts"];
   today: string;
   onUpsert: (args: {
     billId?: string;
@@ -195,6 +198,7 @@ function BillsEditor({
     cadence: "biweekly" | "monthly";
     nextDue: string;
     active: boolean;
+    cashAccountId?: string;
   }) => Promise<string>;
   onRemove: (args: { billId: string }) => Promise<null>;
 }) {
@@ -203,7 +207,13 @@ function BillsEditor({
   const [amount, setAmount] = useState("");
   const [cadence, setCadence] = useState<"biweekly" | "monthly">("monthly");
   const [nextDue, setNextDue] = useState(today);
+  const [cashAccountId, setCashAccountId] = useState("");
   const [error, setError] = useState("");
+
+  const cashNameById = useMemo(
+    () => new Map(cashAccounts.map((account) => [account._id, account.name])),
+    [cashAccounts],
+  );
 
   function startNew() {
     setEditingId("new");
@@ -211,6 +221,7 @@ function BillsEditor({
     setAmount("");
     setCadence("biweekly");
     setNextDue(today);
+    setCashAccountId("");
     setError("");
   }
 
@@ -222,6 +233,7 @@ function BillsEditor({
     setAmount(String(bill.amount));
     setCadence(bill.cadence);
     setNextDue(bill.nextDue);
+    setCashAccountId(bill.cashAccountId ?? "");
     setError("");
   }
 
@@ -236,10 +248,12 @@ function BillsEditor({
         cadence,
         nextDue,
         active: true,
+        cashAccountId: cashAccountId || undefined,
       });
       setEditingId(null);
       setName("");
       setAmount("");
+      setCashAccountId("");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Could not save bill.");
     }
@@ -254,8 +268,8 @@ function BillsEditor({
         </button>
       </div>
       <p className="muted">
-        For car payments every other Friday: choose <strong>Every 2 weeks</strong>, set{" "}
-        <strong>Next due</strong> to the next Friday you pay, then save.
+        Link auto-withdraw bills to a cash account (e.g. Car Payment → Meridian). Cash Patrol will
+        alert you if that cash isn’t seeded before the due date.
       </p>
       <ul className="simple-list">
         {bills.map((bill) => (
@@ -268,7 +282,7 @@ function BillsEditor({
               <span>
                 {bill.name}
                 <small>
-                  {cadenceLabel(bill.cadence)} · anchor {bill.nextDue} · next{" "}
+                  {cadenceLabel(bill.cadence)} · next{" "}
                   {nextBillOccurrence(
                     {
                       id: bill._id,
@@ -277,9 +291,13 @@ function BillsEditor({
                       cadence: bill.cadence,
                       nextDue: bill.nextDue,
                       active: bill.active,
+                      cashAccountId: bill.cashAccountId,
                     },
                     today,
                   )}
+                  {bill.cashAccountId
+                    ? ` · from ${cashNameById.get(bill.cashAccountId) ?? "cash"}`
+                    : ""}
                   {!bill.active ? " · paused" : ""}
                 </small>
               </span>
@@ -345,9 +363,20 @@ function BillsEditor({
               onChange={(event) => setNextDue(event.target.value)}
               required
             />
+          </label>
+          <label>
+            Auto-withdraws from
+            <select value={cashAccountId} onChange={(event) => setCashAccountId(event.target.value)}>
+              <option value="">Not linked</option>
+              {cashAccounts.map((account) => (
+                <option key={account._id} value={account._id}>
+                  {account.name}
+                </option>
+              ))}
+            </select>
             <small className="field-hint">
-              Pick the next Friday (or due day). Cash Patrol will keep counting every 2 weeks from
-              there.
+              If this bill pulls from a bank account automatically, pick that cash account so you get
+              a seed alert when it’s short.
             </small>
           </label>
           <div className="form-actions">

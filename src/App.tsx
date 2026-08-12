@@ -23,6 +23,7 @@ import { TrendPage } from "./features/trend/TrendPage";
 import { SetupPage } from "./features/setup/SetupPage";
 import { patrolApi, type DashboardData } from "./lib/api";
 import {
+  buildCashSeedAlerts,
   buildPaycheckPlan,
   buildPaychequeForecasts,
   totalsFromAccounts,
@@ -97,7 +98,7 @@ function Patrol() {
 
         <main className="content">
           <Routes>
-            <Route path="/" element={<BalancesPage dashboard={dashboard} />} />
+            <Route path="/" element={<BalancesRoute dashboard={dashboard} />} />
             <Route path="/paycheck" element={<PaycheckRoute dashboard={dashboard} />} />
             <Route path="/trend" element={<TrendPage dashboard={dashboard} />} />
             <Route path="/setup" element={<SetupPage dashboard={dashboard} />} />
@@ -116,7 +117,7 @@ function Patrol() {
   );
 }
 
-function PaycheckRoute({ dashboard }: { dashboard: DashboardData }) {
+function usePlanInputs(dashboard: DashboardData) {
   const planAccounts: PlanAccount[] = useMemo(
     () =>
       dashboard.accounts.map((account) => ({
@@ -140,9 +141,24 @@ function PaycheckRoute({ dashboard }: { dashboard: DashboardData }) {
         cadence: bill.cadence,
         nextDue: bill.nextDue,
         active: bill.active,
+        cashAccountId: bill.cashAccountId,
       })),
     [dashboard.bills],
   );
+  const cashSeedAlerts = useMemo(
+    () =>
+      buildCashSeedAlerts({
+        accounts: planAccounts,
+        bills: planBills,
+        asOfDate: dashboard.today,
+      }),
+    [planAccounts, planBills, dashboard.today],
+  );
+  return { planAccounts, planBills, cashSeedAlerts };
+}
+
+function PaycheckRoute({ dashboard }: { dashboard: DashboardData }) {
+  const { planAccounts, planBills, cashSeedAlerts } = usePlanInputs(dashboard);
   const plan = useMemo(
     () =>
       buildPaycheckPlan({
@@ -176,8 +192,14 @@ function PaycheckRoute({ dashboard }: { dashboard: DashboardData }) {
       today={dashboard.today}
       defaultIncome={dashboard.settings?.biweeklyIncome ?? 0}
       incomeByPayday={dashboard.incomeByPayday}
+      cashSeedAlerts={cashSeedAlerts}
     />
   );
+}
+
+function BalancesRoute({ dashboard }: { dashboard: DashboardData }) {
+  const { cashSeedAlerts } = usePlanInputs(dashboard);
+  return <BalancesPage dashboard={dashboard} cashSeedAlerts={cashSeedAlerts} />;
 }
 
 function NavItem({

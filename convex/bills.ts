@@ -26,6 +26,7 @@ export const upsert = mutation({
     cadence: v.union(v.literal("biweekly"), v.literal("monthly")),
     nextDue: v.string(),
     active: v.boolean(),
+    cashAccountId: v.optional(v.id("accounts")),
   },
   handler: async (ctx, args) => {
     const ownerId = await getAuthUserId(ctx);
@@ -42,26 +43,43 @@ export const upsert = mutation({
       throw new ConvexError("Choose a valid next due date.");
     }
 
-    if (args.billId) {
-      const bill = await ctx.db.get(args.billId);
-      if (!bill || bill.ownerId !== ownerId) throw new ConvexError("Bill not found.");
-      await ctx.db.patch(bill._id, {
-        name,
-        amount: Math.round(args.amount * 100) / 100,
-        cadence: args.cadence,
-        nextDue: args.nextDue,
-        active: args.active,
-      });
-      return bill._id;
+    let cashAccountId = args.cashAccountId;
+    if (cashAccountId) {
+      const cashAccount = await ctx.db.get(cashAccountId);
+      if (!cashAccount || cashAccount.ownerId !== ownerId) {
+        throw new ConvexError("Cash account not found.");
+      }
+      if (cashAccount.kind !== "cash") {
+        throw new ConvexError("Auto-withdraw source must be a cash account.");
+      }
+    } else {
+      cashAccountId = undefined;
     }
 
-    return await ctx.db.insert("bills", {
-      ownerId,
+    const payload = {
       name,
       amount: Math.round(args.amount * 100) / 100,
       cadence: args.cadence,
       nextDue: args.nextDue,
       active: args.active,
+    };
+
+    if (args.billId) {
+      const bill = await ctx.db.get(args.billId);
+      if (!bill || bill.ownerId !== ownerId) throw new ConvexError("Bill not found.");
+      const next = {
+        ownerId: bill.ownerId,
+        ...payload,
+        ...(cashAccountId ? { cashAccountId } : {}),
+      };
+      await ctx.db.replace(bill._id, next);
+      return bill._id;
+    }
+
+    return await ctx.db.insert("bills", {
+      ownerId,
+      ...payload,
+      ...(cashAccountId ? { cashAccountId } : {}),
     });
   },
 });

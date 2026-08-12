@@ -41,6 +41,8 @@ export default defineSchema({
     cadence: v.union(v.literal("biweekly"), v.literal("monthly")),
     nextDue: v.string(),
     active: v.boolean(),
+    /** Cash account this bill auto-withdraws from (optional). */
+    cashAccountId: v.optional(v.id("accounts")),
   }).index("by_owner", ["ownerId"]),
   cashflowSettings: defineTable({
     ownerId: v.id("users"),
