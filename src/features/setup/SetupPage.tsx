@@ -299,6 +299,24 @@ function BillsEditor({
     [cashAccounts],
   );
 
+  const billTotals = useMemo(() => {
+    const active = bills.filter((bill) => bill.active);
+    let monthlyFace = 0;
+    let biweeklyFace = 0;
+    for (const bill of active) {
+      if (bill.cadence === "biweekly") biweeklyFace += bill.amount;
+      else monthlyFace += bill.amount;
+    }
+    const monthlyEquivalent =
+      Math.round((monthlyFace + biweeklyFace * (26 / 12)) * 100) / 100;
+    return {
+      count: active.length,
+      monthlyFace: Math.round(monthlyFace * 100) / 100,
+      biweeklyFace: Math.round(biweeklyFace * 100) / 100,
+      monthlyEquivalent,
+    };
+  }, [bills]);
+
   function startNew() {
     setEditingId("new");
     setName("");
@@ -355,6 +373,21 @@ function BillsEditor({
         Link auto-withdraw bills to a cash account (e.g. Car Payment → Meridian). Cash Patrol will
         alert you if that cash isn’t seeded before the due date.
       </p>
+      {billTotals.count > 0 && (
+        <div className="bills-total">
+          <div>
+            <strong>{formatMoney(billTotals.monthlyEquivalent)}</strong>
+            <span>Est. per month</span>
+          </div>
+          <p className="muted">
+            {billTotals.count} active
+            {billTotals.monthlyFace > 0 ? ` · monthly ${formatMoney(billTotals.monthlyFace)}` : ""}
+            {billTotals.biweeklyFace > 0
+              ? ` · every 2 weeks ${formatMoney(billTotals.biweeklyFace)} (×26/12)`
+              : ""}
+          </p>
+        </div>
+      )}
       <ul className="simple-list">
         {bills.map((bill) => (
           <li key={bill._id}>

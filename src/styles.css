@@ -660,6 +660,38 @@ button.summary-card {
   cursor: pointer;
 }
 .strategy-option input { margin-top: .2rem; }
+.bills-total {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: .75rem 1.25rem;
+  margin: 0 0 1rem;
+  padding: .9rem 1rem;
+  border: 1px solid rgba(62, 207, 142, 0.22);
+  border-radius: .95rem;
+  background: linear-gradient(145deg, rgba(62, 207, 142, 0.08), transparent 55%);
+}
+.bills-total strong {
+  display: block;
+  color: var(--accent);
+  font: 700 1.45rem "Archivo";
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.bills-total span {
+  color: var(--muted);
+  font-size: .62rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.bills-total .muted {
+  margin: 0;
+  max-width: 22rem;
+  font-size: .78rem;
+  text-align: right;
+}
 .stack-section { padding: 1.25rem; margin-bottom: 1.25rem; }
 .section-heading {
   display: flex;
