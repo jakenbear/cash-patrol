@@ -272,14 +272,24 @@ describe("paycheckPlan", () => {
           active: true,
           cashAccountId: "meridian",
         },
+        {
+          id: "ins",
+          name: "Car Insurance",
+          amount: 206.36,
+          cadence: "monthly",
+          nextDue: "2026-09-10",
+          active: true,
+          cashAccountId: "meridian",
+        },
       ],
       asOfDate: "2026-08-12",
-      horizonEnd: "2026-08-31",
+      // Aug 14 → Aug 31 window: car payment only; insurance is next cycle
     });
     expect(alerts).toHaveLength(1);
     expect(alerts[0].cashAccountName).toBe("Meridian");
     expect(alerts[0].needed).toBe(387.84);
     expect(alerts[0].shortfall).toBe(355.84);
+    expect(alerts[0].bills.map((bill) => bill.name)).toEqual(["Car Payment"]);
   });
 
   it("returns setup prompt when not configured", () => {

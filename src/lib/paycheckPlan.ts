@@ -219,16 +219,17 @@ export type CashSeedAlert = {
 /**
  * Alerts when auto-withdraw bills are coming up and the linked cash account
  * does not hold enough to cover them.
+ * Horizon is the current paycheque cycle only (this payday → next payday).
  */
 export function buildCashSeedAlerts(input: {
   accounts: PlanAccount[];
   bills: PlanBill[];
   asOfDate: string;
-  /** Exclusive end date; defaults through the second upcoming pay window. */
+  /** Exclusive end date; defaults to the end of the current pay window. */
   horizonEnd?: string;
 }): CashSeedAlert[] {
-  const paydays = listUpcomingPaydays(input.asOfDate, 3);
-  const horizonEnd = input.horizonEnd ?? paydays[2] ?? addDaysIso(input.asOfDate, 45);
+  const { windowEnd } = upcomingPayWindow(input.asOfDate);
+  const horizonEnd = input.horizonEnd ?? windowEnd;
   const cashById = new Map(
     input.accounts
       .filter((account) => account.kind === "cash")
