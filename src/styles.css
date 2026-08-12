@@ -386,7 +386,7 @@ button.summary-card {
 }
 .summary-card div { display: grid; gap: .28rem; }
 .summary-card strong {
-  font: 700 clamp(1.25rem, 3.5vw, 1.55rem) "Archivo";
+  font: 700 clamp(1.45rem, 4.2vw, 1.85rem) "Archivo";
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
 }
