@@ -269,7 +269,17 @@ function BillsEditor({
                 {bill.name}
                 <small>
                   {cadenceLabel(bill.cadence)} · anchor {bill.nextDue} · next{" "}
-                  {nextBillOccurrence(bill, today)}
+                  {nextBillOccurrence(
+                    {
+                      id: bill._id,
+                      name: bill.name,
+                      amount: bill.amount,
+                      cadence: bill.cadence,
+                      nextDue: bill.nextDue,
+                      active: bill.active,
+                    },
+                    today,
+                  )}
                   {!bill.active ? " · paused" : ""}
                 </small>
               </span>
