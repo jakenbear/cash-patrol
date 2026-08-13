@@ -66,7 +66,7 @@ The first users are people under money stress. Extractive pricing and ad-funded 
 | --- | --- |
 | **Balances** | Notepad of cash, cards, loans, watch-only assets. Tap a balance to overwrite it. Cash-gap strip + compact cash-seed nudge. |
 | **Paycheck** | Full plan for this cheque, cash-seed details, payoff runway, upcoming pay amounts, looking ahead. |
-| **Trend** | One midnight snapshot per account. Each card/loan has its own daily progress line; totals sit underneath. |
+| **Trend** | Progress home: one midnight snapshot per account, a line per card/loan, plus CSV / copy-report export. |
 | **Setup** | Income, float, bills (optional auto-withdraw cash source), APRs/mins, paydown strategy (manual / avalanche / snowball). |
 
 **Install:** production is a PWA (Add to Home Screen / Install).

@@ -210,3 +210,93 @@ export function formatShortDate(isoDate: string): string {
     timeZone: "UTC",
   });
 }
+
+function csvField(value: string | number): string {
+  const text = String(value);
+  if (!/[",\n]/.test(text)) return text;
+  return `"${text.replaceAll("\"", "\"\"")}"`;
+}
+
+function moneyPlain(value: number): string {
+  return value.toLocaleString("en-CA", {
+    style: "currency",
+    currency: "CAD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+/** Long-form CSV: one row per account per day, plus rolled-up cash/debt. */
+export function buildSnapshotCsv(args: {
+  accounts: Account[];
+  days: DailyPoint[];
+}): string {
+  const header = ["date", "account", "kind", "balance", "cash_total", "debt_total"];
+  const lines = [header.join(",")];
+  for (const day of args.days) {
+    for (const account of args.accounts) {
+      const balance = day.byAccount[account._id];
+      if (typeof balance !== "number") continue;
+      lines.push(
+        [
+          csvField(day.date),
+          csvField(account.name),
+          csvField(account.kind),
+          csvField(balance.toFixed(2)),
+          csvField(day.cash.toFixed(2)),
+          csvField(day.debt.toFixed(2)),
+        ].join(","),
+      );
+    }
+  }
+  return `${lines.join("\n")}\n`;
+}
+
+/** Readable snapshot report for copy/share. Cards and loans first, then cash. */
+export function buildSnapshotReport(args: {
+  accounts: Account[];
+  days: DailyPoint[];
+  today: string;
+}): string {
+  const first = args.days[0];
+  const latest = args.days[args.days.length - 1];
+  const lines = [
+    "Cash Patrol snapshot report",
+    first && latest ? `${first.date} to ${latest.date}` : args.today,
+    "One midnight close per account. Today's row is live.",
+    "",
+  ];
+
+  const ordered = [...args.accounts].sort((a, b) => {
+    const rank = (kind: Account["kind"]) =>
+      kind === "credit" || kind === "loan" ? 0 : kind === "cash" ? 1 : 2;
+    return rank(a.kind) - rank(b.kind) || a.priority - b.priority || a.name.localeCompare(b.name);
+  });
+
+  for (const account of ordered) {
+    const points = args.days
+      .map((day) => ({ date: day.date, balance: day.byAccount[account._id] }))
+      .filter((point): point is { date: string; balance: number } => typeof point.balance === "number");
+    if (points.length === 0) continue;
+    const start = points[0].balance;
+    const end = points[points.length - 1].balance;
+    const delta = end - start;
+    const sign = delta > 0 ? "+" : "";
+    lines.push(`${account.name} (${account.kind})`);
+    for (const point of points) {
+      lines.push(`  ${point.date}  ${moneyPlain(point.balance)}`);
+    }
+    lines.push(`  Change    ${sign}${moneyPlain(delta)}`);
+    lines.push("");
+  }
+
+  if (latest) {
+    lines.push(`Cash total  ${moneyPlain(latest.cash)}`);
+    lines.push(`Debt total  ${moneyPlain(latest.debt)}`);
+  }
+  return `${lines.join("\n").trim()}\n`;
+}
+
+export function snapshotExportFilename(today: string, extension: "csv" | "txt"): string {
+  return `cash-patrol-snapshots-${today}.${extension}`;
+}

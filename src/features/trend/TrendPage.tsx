@@ -1,8 +1,12 @@
-import { useMemo } from "react";
-import type { DashboardData } from "../../lib/api";
+import { useMemo, useState } from "react";
+import { Download } from "lucide-react";
+import type { Account, DashboardData } from "../../lib/api";
 import {
   buildDailyTrend,
+  buildSnapshotCsv,
+  buildSnapshotReport,
   formatShortDate,
+  snapshotExportFilename,
   type AccountTrend,
   type DailyPoint,
   type DailyTrend,
@@ -31,10 +35,11 @@ export function TrendPage({ dashboard }: { dashboard: DashboardData }) {
           <p className="eyebrow">History</p>
           <h1>Trend</h1>
           <p className="muted">
-            One midnight snapshot per account in your timezone. Overwrites during the day wait
-            until tonight’s close — then each card and loan gets its own line.
+            One midnight snapshot per account. Each card and loan gets its own line. Export the
+            daily closes when you want them in a spreadsheet.
           </p>
         </div>
+        <ExportActions accounts={dashboard.accounts} days={trend.days} today={dashboard.today} />
       </header>
 
       {!first || !latest || trend.days.length < 2 ? (
@@ -117,6 +122,74 @@ function TrendReady({
         </p>
       </section>
     </>
+  );
+}
+
+function downloadText(filename: string, text: string, type: string) {
+  const blob = new Blob([text], { type });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function ExportActions({
+  accounts,
+  days,
+  today,
+}: {
+  accounts: Account[];
+  days: DailyPoint[];
+  today: string;
+}) {
+  const [copied, setCopied] = useState(false);
+  const disabled = accounts.length === 0 || days.length === 0;
+
+  return (
+    <div className="export-actions">
+      <button
+        className="primary-button compact"
+        type="button"
+        disabled={disabled}
+        onClick={() => {
+          downloadText(
+            snapshotExportFilename(today, "csv"),
+            buildSnapshotCsv({ accounts, days }),
+            "text/csv;charset=utf-8",
+          );
+        }}
+      >
+        <Download aria-hidden="true" />
+        Export CSV
+      </button>
+      <button
+        className="text-button"
+        type="button"
+        disabled={disabled}
+        onClick={() => {
+          const report = buildSnapshotReport({ accounts, days, today });
+          const copied = navigator.clipboard?.writeText(report);
+          if (!copied) {
+            downloadText(snapshotExportFilename(today, "txt"), report, "text/plain;charset=utf-8");
+            return;
+          }
+          void copied
+            .then(() => {
+              setCopied(true);
+              window.setTimeout(() => setCopied(false), 2000);
+            })
+            .catch(() => {
+              downloadText(snapshotExportFilename(today, "txt"), report, "text/plain;charset=utf-8");
+            });
+        }}
+      >
+        {copied ? "Copied report" : "Copy report"}
+      </button>
+    </div>
   );
 }
 

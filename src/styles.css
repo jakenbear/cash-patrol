@@ -303,6 +303,11 @@ input:focus, select:focus {
   animation: fade-up 0.38s var(--ease-out) both;
 }
 .page-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1.5rem; margin-bottom: 1.65rem; }
+.export-actions { display: grid; gap: .45rem; justify-items: end; flex: 0 0 auto; }
+.export-actions .primary-button svg { width: 1rem; }
+.export-actions .text-button { font-size: .8rem; font-weight: 700; }
+.export-actions .text-button:disabled,
+.export-actions .primary-button:disabled { opacity: .45; cursor: not-allowed; }
 @keyframes fade-up {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }

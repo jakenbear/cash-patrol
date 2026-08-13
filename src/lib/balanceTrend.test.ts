@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { buildDailyTrend, formatShortDate } from "./balanceTrend";
+import {
+  buildDailyTrend,
+  buildSnapshotCsv,
+  buildSnapshotReport,
+  formatShortDate,
+  snapshotExportFilename,
+} from "./balanceTrend";
 import type { Account, BalanceEvent, BalanceSnapshot } from "./api";
 
 const cash: Account = {
@@ -107,5 +113,44 @@ describe("buildDailyTrend", () => {
 describe("formatShortDate", () => {
   it("formats an ISO date without shifting the calendar day", () => {
     expect(formatShortDate("2026-08-13")).toBe("Aug 13");
+  });
+});
+
+describe("snapshot export", () => {
+  it("writes one CSV row per account per day", () => {
+    const trend = buildDailyTrend({
+      accounts: [cash, { ...card, name: "Cap, one" }],
+      snapshots: [
+        { accountId: "moola", balance: 40, date: "2026-08-10", at: 1 },
+        { accountId: "cap", balance: 4844, date: "2026-08-10", at: 1 },
+      ],
+      events: [],
+      today: "2026-08-11",
+    });
+
+    const csv = buildSnapshotCsv({ accounts: [cash, { ...card, name: "Cap, one" }], days: trend.days });
+    expect(csv).toContain("date,account,kind,balance,cash_total,debt_total");
+    expect(csv).toContain("2026-08-10,\"Cap, one\",credit,4844.00,40.00,4844.00");
+    expect(csv).toContain("2026-08-11,Moola,cash,80.00,80.00,4600.00");
+  });
+
+  it("writes a readable per-account report", () => {
+    const trend = buildDailyTrend({
+      accounts: [cash, card],
+      snapshots: [
+        { accountId: "moola", balance: 40, date: "2026-08-10", at: 1 },
+        { accountId: "cap", balance: 4844, date: "2026-08-10", at: 1 },
+      ],
+      events: [],
+      today: "2026-08-11",
+    });
+    const report = buildSnapshotReport({
+      accounts: [cash, card],
+      days: trend.days,
+      today: "2026-08-11",
+    });
+    expect(report).toContain("Cap one (credit)");
+    expect(report).toContain("Change    -$244.00");
+    expect(snapshotExportFilename("2026-08-13", "csv")).toBe("cash-patrol-snapshots-2026-08-13.csv");
   });
 });
