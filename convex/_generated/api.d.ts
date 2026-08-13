@@ -11,6 +11,7 @@
 import type * as accounts from "../accounts.js";
 import type * as auth from "../auth.js";
 import type * as bills from "../bills.js";
+import type * as crons from "../crons.js";
 import type * as dashboard from "../dashboard.js";
 import type * as dates from "../dates.js";
 import type * as http from "../http.js";
@@ -28,6 +29,7 @@ declare const fullApi: ApiFromModules<{
   accounts: typeof accounts;
   auth: typeof auth;
   bills: typeof bills;
+  crons: typeof crons;
   dashboard: typeof dashboard;
   dates: typeof dates;
   http: typeof http;
