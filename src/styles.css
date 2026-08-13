@@ -949,29 +949,28 @@ button.summary-card {
   color: var(--muted);
   font-size: .75rem;
 }
-.account-trend-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
-.account-trend-list li {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 4.6rem auto;
-  align-items: center;
-  gap: .75rem 1rem;
-  padding: .85rem 0;
-  border-bottom: 1px solid var(--line-soft);
+.account-progress-stack { display: grid; gap: .85rem; margin-bottom: 1.25rem; }
+.account-progress-stack > .section-heading { margin-bottom: .15rem; }
+.account-progress { padding: 1.1rem 1.2rem 1rem; }
+.account-progress-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: .85rem 1.25rem;
+  margin-bottom: .65rem;
 }
-.account-trend-list li:first-child { padding-top: 0; }
-.account-trend-list li:last-child { border-bottom: 0; padding-bottom: 0; }
-.account-trend-copy { display: grid; gap: .18rem; min-width: 0; }
-.account-trend-copy strong { font: 600 1rem "Archivo"; }
-.account-trend-copy small { color: var(--muted); font-size: .72rem; }
-.account-trend-value { display: grid; justify-items: end; gap: .2rem; }
-.account-trend-value strong {
-  font: 700 1.05rem "Archivo";
+.account-progress-head strong { display: block; font: 700 1.1rem "Archivo"; }
+.account-progress-head small { color: var(--muted); font-size: .72rem; }
+.account-progress-value { display: grid; justify-items: end; gap: .2rem; text-align: right; }
+.account-progress-value strong {
+  font: 700 1.25rem "Archivo";
   font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
 }
-.mini-spark { width: 4.6rem; height: 1.75rem; }
-.mini-spark path { stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.mini-spark.is-down path { stroke: var(--accent); }
-.mini-spark.is-up path { stroke: var(--orange); }
+.account-spark { width: 100%; height: auto; }
+.account-spark path { stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.account-spark.is-down path { stroke: var(--accent); }
+.account-spark.is-up path { stroke: var(--orange); }
 
 .trend-summary {
   grid-template-columns: repeat(3, 1fr);
@@ -1019,15 +1018,8 @@ button.summary-card {
 }
 
 @media (max-width: 520px) {
-  .account-trend-list li {
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas:
-      "copy value"
-      "spark value";
-  }
-  .account-trend-copy { grid-area: copy; }
-  .mini-spark { grid-area: spark; width: 5.5rem; }
-  .account-trend-value { grid-area: value; }
+  .account-progress-head { flex-direction: column; }
+  .account-progress-value { justify-items: start; text-align: left; }
   .install-button span { display: none; }
   .install-button { width: 2.6rem; justify-content: center; padding: 0; }
   .page { padding-right: .9rem; padding-left: .9rem; }

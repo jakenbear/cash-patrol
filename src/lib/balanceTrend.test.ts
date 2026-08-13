@@ -67,6 +67,8 @@ describe("buildDailyTrend", () => {
       first: 4844,
       current: 4600,
       delta: -244,
+      series: [4844, 4700, 4600],
+      dates: ["2026-08-10", "2026-08-11", "2026-08-12"],
     });
   });
 

@@ -3,6 +3,7 @@ import type { DashboardData } from "../../lib/api";
 import {
   buildDailyTrend,
   formatShortDate,
+  type AccountTrend,
   type DailyPoint,
   type DailyTrend,
 } from "../../lib/balanceTrend";
@@ -30,15 +31,18 @@ export function TrendPage({ dashboard }: { dashboard: DashboardData }) {
           <p className="eyebrow">History</p>
           <h1>Trend</h1>
           <p className="muted">
-            Daily midnight snapshots in your timezone, plus today’s live balances. A rear-view
-            mirror — not a transaction ledger.
+            One midnight snapshot per account in your timezone. Overwrites during the day wait
+            until tonight’s close — then each card and loan gets its own line.
           </p>
         </div>
       </header>
 
       {!first || !latest || trend.days.length < 2 ? (
         <section className="panel empty-state">
-          <p>A trend appears after the first midnight snapshot, or after you overwrite a few balances.</p>
+          <p>
+            A trend appears after the first midnight snapshot, or after you overwrite a few
+            balances.
+          </p>
         </section>
       ) : (
         <TrendReady first={first} latest={latest} trend={trend} />
@@ -88,46 +92,53 @@ function TrendReady({
         </div>
       </div>
 
+      {trend.accounts.length > 0 && (
+        <section className="account-progress-stack">
+          <div className="section-heading">
+            <h2>Each account</h2>
+            <span>{rangeLabel}</span>
+          </div>
+          {trend.accounts.map((account) => (
+            <AccountProgress key={account.id} account={account} days={trend.days} />
+          ))}
+        </section>
+      )}
+
       <section className="panel chart-panel">
         <div className="section-heading">
-          <h2>Debt vs cash</h2>
+          <h2>All debt vs cash</h2>
           <span>{rangeLabel}</span>
         </div>
         <Sparkline series={trend.days} />
         <p className="chart-footnote">
           {trend.source === "snapshots"
-            ? `${trend.days.length} daily points`
+            ? `${trend.days.length} daily closes`
             : `${trend.days.length} days reconstructed from overwrites until midnight snapshots catch up`}
         </p>
       </section>
-
-      {trend.accounts.length > 0 && (
-        <section className="panel stack-section">
-          <div className="section-heading">
-            <h2>Accounts going down</h2>
-            <span>Debt</span>
-          </div>
-          <ul className="account-trend-list">
-            {trend.accounts.map((account) => (
-              <li key={account.id}>
-                <div className="account-trend-copy">
-                  <strong>{account.name}</strong>
-                  <small>{account.kind === "loan" ? "Loan" : "Credit card"}</small>
-                </div>
-                <MiniSpark values={account.series} falling={account.delta <= 0} />
-                <div className="account-trend-value">
-                  <strong>{formatMoney(account.current)}</strong>
-                  <span className={account.delta < 0 ? "delta down" : account.delta > 0 ? "delta up" : "delta"}>
-                    {account.delta > 0 ? "+" : ""}
-                    {formatMoney(account.delta)}
-                  </span>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
     </>
+  );
+}
+
+function AccountProgress({ account, days }: { account: AccountTrend; days: DailyPoint[] }) {
+  const falling = account.delta <= 0;
+  return (
+    <section className="panel chart-panel account-progress">
+      <div className="account-progress-head">
+        <div>
+          <strong>{account.name}</strong>
+          <small>{account.kind === "loan" ? "Loan" : "Credit card"}</small>
+        </div>
+        <div className="account-progress-value">
+          <strong>{formatMoney(account.current)}</strong>
+          <span className={account.delta < 0 ? "delta down" : account.delta > 0 ? "delta up" : "delta"}>
+            {account.delta > 0 ? "+" : ""}
+            {formatMoney(account.delta)} since {formatShortDate(account.dates[0] ?? days[0]?.date ?? "")}
+          </span>
+        </div>
+      </div>
+      <AccountSpark values={account.series} dates={account.dates} falling={falling} />
+    </section>
   );
 }
 
@@ -177,28 +188,54 @@ function Sparkline({ series }: { series: DailyPoint[] }) {
   );
 }
 
-function MiniSpark({ values, falling }: { values: number[]; falling: boolean }) {
-  const width = 72;
-  const height = 28;
-  const pad = 2;
+function AccountSpark({
+  values,
+  dates,
+  falling,
+}: {
+  values: number[];
+  dates: string[];
+  falling: boolean;
+}) {
+  const width = 320;
+  const height = 88;
+  const padX = 12;
+  const padTop = 8;
+  const padBottom = 20;
   const max = Math.max(...values, 1);
   const min = Math.min(...values, 0);
   const span = Math.max(max - min, 1);
+  const innerHeight = height - padTop - padBottom;
   const d = values
     .map((value, index) => {
-      const x = pad + (index / Math.max(values.length - 1, 1)) * (width - pad * 2);
-      const y = height - pad - ((value - min) / span) * (height - pad * 2);
+      const x = padX + (index / Math.max(values.length - 1, 1)) * (width - padX * 2);
+      const y = padTop + innerHeight - ((value - min) / span) * innerHeight;
       return `${index === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`;
     })
     .join(" ");
 
+  const labelDates = [dates[0], dates[Math.floor((dates.length - 1) / 2)], dates[dates.length - 1]].filter(
+    (date, index, list): date is string => !!date && list.indexOf(date) === index,
+  );
+
   return (
     <svg
-      className={`mini-spark ${falling ? "is-down" : "is-up"}`}
+      className={`account-spark ${falling ? "is-down" : "is-up"}`}
       viewBox={`0 0 ${width} ${height}`}
-      aria-hidden="true"
+      role="img"
+      aria-label="Daily balance"
     >
       <path d={d} fill="none" />
+      {labelDates.map((date) => {
+        const index = dates.indexOf(date);
+        const x = padX + (index / Math.max(dates.length - 1, 1)) * (width - padX * 2);
+        const anchor = index === 0 ? "start" : index === dates.length - 1 ? "end" : "middle";
+        return (
+          <text key={date} x={x} y={height - 4} textAnchor={anchor} className="chart-date">
+            {formatShortDate(date)}
+          </text>
+        );
+      })}
     </svg>
   );
 }

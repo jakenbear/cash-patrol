@@ -16,6 +16,7 @@ export type AccountTrend = {
   first: number;
   delta: number;
   series: number[];
+  dates: string[];
 };
 
 export type DailyTrend = {
@@ -85,9 +86,14 @@ function accountTrends(accounts: Account[], days: DailyPoint[]): AccountTrend[] 
   return accounts
     .filter((account) => account.kind === "credit" || account.kind === "loan")
     .map((account) => {
-      const series = days
-        .map((day) => day.byAccount[account._id])
-        .filter((value): value is number => typeof value === "number");
+      const series: number[] = [];
+      const dates: string[] = [];
+      for (const day of days) {
+        const value = day.byAccount[account._id];
+        if (typeof value !== "number") continue;
+        series.push(value);
+        dates.push(day.date);
+      }
       const first = series[0] ?? account.balance;
       const current = account.balance;
       return {
@@ -98,6 +104,7 @@ function accountTrends(accounts: Account[], days: DailyPoint[]): AccountTrend[] 
         first,
         delta: current - first,
         series: series.length > 0 ? series : [current],
+        dates: dates.length > 0 ? dates : days[days.length - 1] ? [days[days.length - 1].date] : [],
       };
     });
 }
