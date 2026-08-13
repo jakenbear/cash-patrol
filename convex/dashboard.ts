@@ -1,7 +1,7 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { ConvexError } from "convex/values";
 import { query } from "./_generated/server";
-import { todayInTimeZone } from "./dates";
+import { addDaysIso, todayInTimeZone } from "./dates";
 
 export const getDashboard = query({
   args: {},
@@ -62,12 +62,25 @@ export const getDashboard = query({
       today = todayInTimeZone("UTC");
     }
 
+    const snapshotCutoff = addDaysIso(today, -180);
+    const snapshotRows = await ctx.db
+      .query("balanceSnapshots")
+      .withIndex("by_owner_date", (q) => q.eq("ownerId", ownerId).gte("date", snapshotCutoff))
+      .collect();
+    const snapshots = snapshotRows.map((row) => ({
+      accountId: row.accountId,
+      balance: row.balance,
+      date: row.date,
+      at: row.at,
+    }));
+
     return {
       accounts,
       bills,
       settings,
       incomeByPayday,
       events: events.slice().reverse(),
+      snapshots,
       latestDeltaByAccount,
       profile: {
         email: user?.email,
