@@ -43,7 +43,7 @@ Looking ahead shows what each upcoming cheque can do after bills, mins, and floa
 ### Stay on track without shame
 Home shows **days to payday** and a rough **$/day cash pace** so the gap between deposits is visible early.
 
-Paycheck shows a **payoff runway** for the current focus account (mins + focus from the plan; interest not modeled). Trend charts debt/cash from balance overwrites — a rear-view mirror, not the whole coach.
+Paycheck shows a **payoff runway** for the current focus account (mins + focus from the plan; interest not modeled). Trend charts each card/loan from **one midnight snapshot per account** (owner timezone) — a rear-view mirror, not an intra-day ledger.
 
 ### Who it’s for
 People who:
@@ -66,7 +66,7 @@ The first users are people under money stress. Extractive pricing and ad-funded 
 | --- | --- |
 | **Balances** | Notepad of cash, cards, loans, watch-only assets. Tap a balance to overwrite it. Cash-gap strip + compact cash-seed nudge. |
 | **Paycheck** | Full plan for this cheque, cash-seed details, payoff runway, upcoming pay amounts, looking ahead. |
-| **Trend** | Debt vs cash from overwrite history. |
+| **Trend** | Progress home: one midnight snapshot per account, a line per card/loan, plus CSV / copy-report export. |
 | **Setup** | Income, float, bills (optional auto-withdraw cash source), APRs/mins, paydown strategy (manual / avalanche / snowball). |
 
 **Install:** production is a PWA (Add to Home Screen / Install).

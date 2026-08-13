@@ -3,6 +3,7 @@ import { ConvexError, v } from "convex/values";
 import type { MutationCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
 import { todayInTimeZone } from "./dates";
+import { snapshotAccountsOnDate } from "./snapshots";
 
 const SEED_ACCOUNTS = [
   { name: "Moola", kind: "cash" as const, balance: 40, includeInPaydown: false },
@@ -74,8 +75,8 @@ export const seedDefaults = mutation({
       .query("cashflowSettings")
       .withIndex("by_owner", (q) => q.eq("ownerId", ownerId))
       .first();
+    let timeZone = settings?.timeZone ?? "America/Toronto";
     if (!settings) {
-      let timeZone = "America/Toronto";
       try {
         todayInTimeZone(timeZone);
       } catch {
@@ -91,6 +92,13 @@ export const seedDefaults = mutation({
         paydownStrategy: "manual",
       });
     }
+
+    await snapshotAccountsOnDate(ctx, {
+      ownerId,
+      date: todayInTimeZone(timeZone),
+      at: now,
+      source: "seed",
+    });
 
     return { seeded: true };
   },
@@ -191,7 +199,7 @@ export const upsert = mutation({
       .withIndex("by_owner", (q) => q.eq("ownerId", ownerId))
       .collect();
     const maxPriority = existing.reduce((max, item) => Math.max(max, item.priority), 0);
-    return await ctx.db.insert("accounts", {
+    const accountId = await ctx.db.insert("accounts", {
       ownerId,
       name,
       kind: args.kind,
@@ -202,6 +210,24 @@ export const upsert = mutation({
       includeInPaydown,
       updatedAt: now,
     });
+    const settings = await ctx.db
+      .query("cashflowSettings")
+      .withIndex("by_owner", (q) => q.eq("ownerId", ownerId))
+      .first();
+    let timeZone = settings?.timeZone ?? "America/Toronto";
+    try {
+      todayInTimeZone(timeZone);
+    } catch {
+      timeZone = "UTC";
+    }
+    await snapshotAccountsOnDate(ctx, {
+      ownerId,
+      date: todayInTimeZone(timeZone),
+      at: now,
+      source: "account",
+      accounts: [{ _id: accountId, balance: Math.round(args.balance * 100) / 100 }],
+    });
+    return accountId;
   },
 });
 

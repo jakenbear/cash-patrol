@@ -34,6 +34,25 @@ export default defineSchema({
     .index("by_owner", ["ownerId"])
     .index("by_owner_at", ["ownerId", "at"])
     .index("by_account", ["accountId"]),
+  /** One row per account per local calendar day (midnight in the owner's timezone). */
+  balanceSnapshots: defineTable({
+    ownerId: v.id("users"),
+    accountId: v.id("accounts"),
+    balance: v.number(),
+    date: v.string(),
+    at: v.number(),
+    source: v.optional(
+      v.union(
+        v.literal("cron"),
+        v.literal("seed"),
+        v.literal("backfill"),
+        v.literal("account"),
+      ),
+    ),
+  })
+    .index("by_owner", ["ownerId"])
+    .index("by_owner_date", ["ownerId", "date"])
+    .index("by_account_date", ["accountId", "date"]),
   bills: defineTable({
     ownerId: v.id("users"),
     name: v.string(),

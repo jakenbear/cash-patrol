@@ -303,6 +303,11 @@ input:focus, select:focus {
   animation: fade-up 0.38s var(--ease-out) both;
 }
 .page-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1.5rem; margin-bottom: 1.65rem; }
+.export-actions { display: grid; gap: .45rem; justify-items: end; flex: 0 0 auto; }
+.export-actions .primary-button svg { width: 1rem; }
+.export-actions .text-button { font-size: .8rem; font-weight: 700; }
+.export-actions .text-button:disabled,
+.export-actions .primary-button:disabled { opacity: .45; cursor: not-allowed; }
 @keyframes fade-up {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
@@ -939,6 +944,38 @@ button.summary-card {
 .spark-legend { display: flex; gap: 1rem; font-size: .75rem; font-weight: 700; }
 .spark-legend .debt { color: var(--orange); }
 .spark-legend .cash { color: var(--accent); }
+.chart-date {
+  fill: var(--muted);
+  font-size: 9px;
+  font-weight: 700;
+}
+.chart-footnote {
+  margin: .35rem 0 0;
+  color: var(--muted);
+  font-size: .75rem;
+}
+.account-progress-stack { display: grid; gap: .85rem; margin-bottom: 1.25rem; }
+.account-progress-stack > .section-heading { margin-bottom: .15rem; }
+.account-progress { padding: 1.1rem 1.2rem 1rem; }
+.account-progress-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: .85rem 1.25rem;
+  margin-bottom: .65rem;
+}
+.account-progress-head strong { display: block; font: 700 1.1rem "Archivo"; }
+.account-progress-head small { color: var(--muted); font-size: .72rem; }
+.account-progress-value { display: grid; justify-items: end; gap: .2rem; text-align: right; }
+.account-progress-value strong {
+  font: 700 1.25rem "Archivo";
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+.account-spark { width: 100%; height: auto; }
+.account-spark path { stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.account-spark.is-down path { stroke: var(--accent); }
+.account-spark.is-up path { stroke: var(--orange); }
 
 .trend-summary {
   grid-template-columns: repeat(3, 1fr);
@@ -986,6 +1023,8 @@ button.summary-card {
 }
 
 @media (max-width: 520px) {
+  .account-progress-head { flex-direction: column; }
+  .account-progress-value { justify-items: start; text-align: left; }
   .install-button span { display: none; }
   .install-button { width: 2.6rem; justify-content: center; padding: 0; }
   .page { padding-right: .9rem; padding-left: .9rem; }

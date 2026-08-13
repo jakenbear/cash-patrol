@@ -16,6 +16,7 @@ import type * as dates from "../dates.js";
 import type * as http from "../http.js";
 import type * as paycheques from "../paycheques.js";
 import type * as settings from "../settings.js";
+import type * as snapshots from "../snapshots.js";
 
 import type {
   ApiFromModules,
@@ -32,6 +33,7 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   paycheques: typeof paycheques;
   settings: typeof settings;
+  snapshots: typeof snapshots;
 }>;
 
 /**

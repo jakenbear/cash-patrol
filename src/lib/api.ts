@@ -43,12 +43,20 @@ export type BalanceEvent = {
   at: number;
 };
 
+export type BalanceSnapshot = {
+  accountId: string;
+  balance: number;
+  date: string;
+  at: number;
+};
+
 export type DashboardData = {
   accounts: Account[];
   bills: Bill[];
   settings: CashflowSettings | null;
   incomeByPayday: Record<string, number>;
   events: BalanceEvent[];
+  snapshots: BalanceSnapshot[];
   latestDeltaByAccount: Record<string, { previous: number; next: number; at: number }>;
   profile: { email?: string; name?: string };
   today: string;
