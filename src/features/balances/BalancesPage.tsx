@@ -70,6 +70,7 @@ export function BalancesPage({
     minPayment: account.minPayment,
     priority: account.priority,
     includeInPaydown: account.includeInPaydown,
+    includeInCashOnHand: account.includeInCashOnHand,
   }));
   const totals = totalsFromAccounts(accounts);
   const cashGap = useMemo(
