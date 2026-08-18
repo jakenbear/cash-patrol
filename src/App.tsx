@@ -147,6 +147,7 @@ function usePlanInputs(dashboard: DashboardData) {
         minPayment: account.minPayment,
         priority: account.priority,
         includeInPaydown: account.includeInPaydown,
+        includeInCashOnHand: account.includeInCashOnHand,
       })),
     [dashboard.accounts],
   );

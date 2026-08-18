@@ -384,6 +384,45 @@ describe("paycheckPlan", () => {
     });
   });
 
+  it("excludes cash accounts opted out of cash on hand", () => {
+    const withReserved: PlanAccount[] = [
+      ...accounts,
+      {
+        id: "meridian",
+        name: "Meridian",
+        kind: "cash",
+        balance: 500,
+        priority: 98,
+        includeInPaydown: false,
+        includeInCashOnHand: false,
+      },
+    ];
+    expect(totalsFromAccounts(withReserved).cash).toBe(40);
+  });
+
+  it("treats missing includeInCashOnHand as true for cash accounts", () => {
+    const cashOnly: PlanAccount[] = [
+      {
+        id: "moola",
+        name: "Moola",
+        kind: "cash",
+        balance: 40,
+        priority: 99,
+        includeInPaydown: false,
+      },
+      {
+        id: "ws",
+        name: "WS",
+        kind: "cash",
+        balance: 10,
+        priority: 98,
+        includeInPaydown: false,
+        includeInCashOnHand: true,
+      },
+    ];
+    expect(totalsFromAccounts(cashOnly).cash).toBe(50);
+  });
+
   it("counts days between ISO dates", () => {
     expect(daysBetweenIso("2026-08-12", "2026-08-14")).toBe(2);
     expect(daysBetweenIso("2026-08-14", "2026-08-14")).toBe(0);

@@ -9,6 +9,8 @@ export type PlanAccount = {
   minPayment?: number;
   priority: number;
   includeInPaydown: boolean;
+  /** When false, cash account is excluded from cash-on-hand totals. Default true. */
+  includeInCashOnHand?: boolean;
 };
 
 export type PlanBill = {
@@ -656,9 +658,17 @@ export function buildPayoffRunway(input: {
   };
 }
 
+/** Cash accounts count toward cash on hand unless explicitly opted out. */
+export function countsTowardCashOnHand(account: {
+  kind: AccountKind;
+  includeInCashOnHand?: boolean;
+}): boolean {
+  return account.kind === "cash" && account.includeInCashOnHand !== false;
+}
+
 export function totalsFromAccounts(accounts: PlanAccount[]) {
   const cash = accounts
-    .filter((account) => account.kind === "cash")
+    .filter(countsTowardCashOnHand)
     .reduce((sum, account) => sum + account.balance, 0);
   const debt = accounts
     .filter((account) => account.kind === "credit" || account.kind === "loan")

@@ -78,6 +78,35 @@ describe("buildDailyTrend", () => {
     });
   });
 
+  it("excludes cash accounts opted out of cash on hand from cash totals", () => {
+    const reserved: Account = {
+      _id: "meridian",
+      name: "Meridian",
+      kind: "cash",
+      balance: 500,
+      priority: 98,
+      includeInPaydown: false,
+      includeInCashOnHand: false,
+      updatedAt: 0,
+    };
+    const snapshots: BalanceSnapshot[] = [
+      { accountId: "moola", balance: 40, date: "2026-08-10", at: 1 },
+      { accountId: "meridian", balance: 500, date: "2026-08-10", at: 1 },
+      { accountId: "cap", balance: 4844, date: "2026-08-10", at: 1 },
+    ];
+
+    const trend = buildDailyTrend({
+      accounts: [cash, reserved, card],
+      snapshots,
+      events: [],
+      today: "2026-08-11",
+    });
+
+    expect(trend.days[0]).toMatchObject({ cash: 40, debt: 4844 });
+    expect(trend.days[1]).toMatchObject({ cash: 80, debt: 4600 });
+    expect(trend.days[0]?.byAccount.meridian).toBe(500);
+  });
+
   it("fills quiet days from overwrite history when snapshots are not ready", () => {
     const trend = buildDailyTrend({
       accounts: [cash, card],

@@ -1,4 +1,4 @@
-import { addDaysIso } from "./paycheckPlan";
+import { addDaysIso, countsTowardCashOnHand } from "./paycheckPlan";
 import type { Account, BalanceEvent, BalanceSnapshot } from "./api";
 
 export type DailyPoint = {
@@ -51,14 +51,17 @@ function dateFromTimestamp(at: number, timeZone: string): string {
 
 function sumMode(
   balances: Map<string, number>,
-  kinds: Map<string, Account["kind"]>,
+  accountsById: Map<string, Account>,
   mode: "cash" | "debt",
 ) {
   let total = 0;
   for (const [id, balance] of balances) {
-    const kind = kinds.get(id);
-    if (mode === "cash" && kind === "cash") total += balance;
-    if (mode === "debt" && (kind === "credit" || kind === "loan")) total += balance;
+    const account = accountsById.get(id);
+    if (!account) continue;
+    if (mode === "cash" && countsTowardCashOnHand(account)) total += balance;
+    if (mode === "debt" && (account.kind === "credit" || account.kind === "loan")) {
+      total += balance;
+    }
   }
   return total;
 }
@@ -66,14 +69,14 @@ function sumMode(
 function pointFrom(
   date: string,
   balances: Map<string, number>,
-  kinds: Map<string, Account["kind"]>,
+  accountsById: Map<string, Account>,
 ): DailyPoint {
   const byAccount: Record<string, number> = {};
   for (const [id, balance] of balances) byAccount[id] = balance;
   return {
     date,
-    cash: sumMode(balances, kinds, "cash"),
-    debt: sumMode(balances, kinds, "debt"),
+    cash: sumMode(balances, accountsById, "cash"),
+    debt: sumMode(balances, accountsById, "debt"),
     byAccount,
   };
 }
@@ -114,7 +117,7 @@ function fromSnapshots(
   snapshots: BalanceSnapshot[],
   today: string,
 ): DailyPoint[] {
-  const kinds = new Map(accounts.map((account) => [account._id, account.kind]));
+  const accountsById = new Map(accounts.map((account) => [account._id, account]));
   const known = new Set(accounts.map((account) => account._id));
   const byDate = new Map<string, Map<string, number>>();
   for (const snapshot of snapshots) {
@@ -132,9 +135,9 @@ function fromSnapshots(
     const day = byDate.get(date);
     if (!day) continue;
     for (const [id, balance] of day) running.set(id, balance);
-    points.push(pointFrom(date, running, kinds));
+    points.push(pointFrom(date, running, accountsById));
   }
-  points.push(pointFrom(today, liveBalances(accounts), kinds));
+  points.push(pointFrom(today, liveBalances(accounts), accountsById));
   return points;
 }
 
@@ -144,7 +147,7 @@ function fromOverwrites(
   today: string,
   timeZone: string,
 ): DailyPoint[] {
-  const kinds = new Map(accounts.map((account) => [account._id, account.kind]));
+  const accountsById = new Map(accounts.map((account) => [account._id, account]));
   const known = new Set(accounts.map((account) => account._id));
   const relevant = events
     .filter((event) => known.has(event.accountId))
@@ -156,7 +159,7 @@ function fromOverwrites(
   }
 
   if (relevant.length === 0) {
-    return [pointFrom(today, liveBalances(accounts), kinds)];
+    return [pointFrom(today, liveBalances(accounts), accountsById)];
   }
 
   const firstDate = dateFromTimestamp(relevant[0].at, timeZone);
@@ -171,13 +174,13 @@ function fromOverwrites(
   const points: DailyPoint[] = [];
   for (const date of eachIsoDate(firstDate, today)) {
     if (date < today) {
-      points.push(pointFrom(date, running, kinds));
+      points.push(pointFrom(date, running, accountsById));
     }
     for (const event of eventsByDate.get(date) ?? []) {
       running.set(event.accountId, event.next);
     }
   }
-  points.push(pointFrom(today, liveBalances(accounts), kinds));
+  points.push(pointFrom(today, liveBalances(accounts), accountsById));
   return points;
 }
 

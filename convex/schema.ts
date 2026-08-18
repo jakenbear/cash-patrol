@@ -20,6 +20,8 @@ export default defineSchema({
     minPayment: v.optional(v.number()),
     priority: v.number(),
     includeInPaydown: v.boolean(),
+    /** When false, excluded from cash-on-hand totals. Missing means true for cash. */
+    includeInCashOnHand: v.optional(v.boolean()),
     updatedAt: v.number(),
   })
     .index("by_owner", ["ownerId"])

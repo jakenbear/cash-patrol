@@ -10,6 +10,7 @@ export type Account = {
   minPayment?: number;
   priority: number;
   includeInPaydown: boolean;
+  includeInCashOnHand?: boolean;
   updatedAt: number;
 };
 
@@ -85,6 +86,7 @@ export const patrolApi = {
       apr?: number;
       minPayment?: number;
       includeInPaydown: boolean;
+      includeInCashOnHand?: boolean;
     },
     string
   >("accounts:upsert"),

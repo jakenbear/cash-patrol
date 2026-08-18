@@ -529,6 +529,7 @@ function AccountsEditor({
     apr?: number;
     minPayment?: number;
     includeInPaydown: boolean;
+    includeInCashOnHand?: boolean;
   }) => Promise<string>;
   onRemove: (args: { accountId: string }) => Promise<null>;
 }) {
@@ -538,6 +539,7 @@ function AccountsEditor({
   const [balance, setBalance] = useState("0");
   const [apr, setApr] = useState("");
   const [minPayment, setMinPayment] = useState("");
+  const [includeInCashOnHand, setIncludeInCashOnHand] = useState(true);
   const [error, setError] = useState("");
 
   function startEdit(accountId: string) {
@@ -549,6 +551,7 @@ function AccountsEditor({
     setBalance(String(account.balance));
     setApr(account.apr !== undefined ? String(account.apr) : "");
     setMinPayment(account.minPayment !== undefined ? String(account.minPayment) : "");
+    setIncludeInCashOnHand(account.includeInCashOnHand !== false);
     setError("");
   }
 
@@ -559,6 +562,7 @@ function AccountsEditor({
     setBalance("0");
     setApr("");
     setMinPayment("");
+    setIncludeInCashOnHand(true);
     setError("");
   }
 
@@ -574,6 +578,7 @@ function AccountsEditor({
         apr: apr === "" ? undefined : Number(apr),
         minPayment: minPayment === "" ? undefined : Number(minPayment),
         includeInPaydown: kind === "credit" || kind === "loan",
+        includeInCashOnHand: kind === "cash" ? includeInCashOnHand : false,
       });
       setEditingId(null);
     } catch (caught) {
@@ -597,6 +602,9 @@ function AccountsEditor({
                 <strong>{account.name}</strong>
                 <small>
                   {account.kind}
+                  {account.kind === "cash" && account.includeInCashOnHand === false
+                    ? " · not cash on hand"
+                    : ""}
                   {account.apr !== undefined ? ` · ${account.apr}%` : ""}
                   {account.minPayment !== undefined
                     ? ` · min ${formatMoney(account.minPayment)}`
@@ -631,12 +639,14 @@ function AccountsEditor({
                 balance={balance}
                 apr={apr}
                 minPayment={minPayment}
+                includeInCashOnHand={includeInCashOnHand}
                 error={error}
                 onName={setName}
                 onKind={setKind}
                 onBalance={setBalance}
                 onApr={setApr}
                 onMinPayment={setMinPayment}
+                onIncludeInCashOnHand={setIncludeInCashOnHand}
                 onSave={save}
                 onCancel={() => setEditingId(null)}
               />
@@ -653,12 +663,14 @@ function AccountsEditor({
           balance={balance}
           apr={apr}
           minPayment={minPayment}
+          includeInCashOnHand={includeInCashOnHand}
           error={error}
           onName={setName}
           onKind={setKind}
           onBalance={setBalance}
           onApr={setApr}
           onMinPayment={setMinPayment}
+          onIncludeInCashOnHand={setIncludeInCashOnHand}
           onSave={save}
           onCancel={() => setEditingId(null)}
         />
@@ -674,12 +686,14 @@ function AccountForm({
   balance,
   apr,
   minPayment,
+  includeInCashOnHand,
   error,
   onName,
   onKind,
   onBalance,
   onApr,
   onMinPayment,
+  onIncludeInCashOnHand,
   onSave,
   onCancel,
 }: {
@@ -689,12 +703,14 @@ function AccountForm({
   balance: string;
   apr: string;
   minPayment: string;
+  includeInCashOnHand: boolean;
   error: string;
   onName: (value: string) => void;
   onKind: (value: AccountKind) => void;
   onBalance: (value: string) => void;
   onApr: (value: string) => void;
   onMinPayment: (value: string) => void;
+  onIncludeInCashOnHand: (value: boolean) => void;
   onSave: (event: FormEvent) => void;
   onCancel: () => void;
 }) {
@@ -723,6 +739,16 @@ function AccountForm({
           required
         />
       </label>
+      {kind === "cash" && (
+        <label className="checkbox-row">
+          <input
+            type="checkbox"
+            checked={includeInCashOnHand}
+            onChange={(event) => onIncludeInCashOnHand(event.target.checked)}
+          />
+          Count toward cash on hand
+        </label>
+      )}
       {(kind === "credit" || kind === "loan") && (
         <>
           <label>

@@ -183,6 +183,20 @@ label {
   font-weight: 700;
   letter-spacing: .04em;
 }
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: .65rem;
+  letter-spacing: 0;
+  font-weight: 600;
+  text-transform: none;
+}
+.checkbox-row input[type="checkbox"] {
+  width: auto;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--accent);
+}
 input, select {
   width: 100%;
   padding: .9rem 1rem;

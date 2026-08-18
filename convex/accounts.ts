@@ -6,8 +6,8 @@ import { todayInTimeZone } from "./dates";
 import { snapshotAccountsOnDate } from "./snapshots";
 
 const SEED_ACCOUNTS = [
-  { name: "Moola", kind: "cash" as const, balance: 40, includeInPaydown: false },
-  { name: "WS", kind: "cash" as const, balance: 0, includeInPaydown: false },
+  { name: "Moola", kind: "cash" as const, balance: 40, includeInPaydown: false, includeInCashOnHand: true },
+  { name: "WS", kind: "cash" as const, balance: 0, includeInPaydown: false, includeInCashOnHand: true },
   { name: "Cap one", kind: "credit" as const, balance: 4844, includeInPaydown: true },
   { name: "CC Card", kind: "credit" as const, balance: 8527, includeInPaydown: true },
   { name: "Tang CC", kind: "credit" as const, balance: 2447, includeInPaydown: true },
@@ -67,6 +67,9 @@ export const seedDefaults = mutation({
         balance: account.balance,
         priority: priorityByName.get(account.name) ?? 100 + index,
         includeInPaydown: account.includeInPaydown,
+        ...(account.kind === "cash"
+          ? { includeInCashOnHand: account.includeInCashOnHand ?? true }
+          : {}),
         updatedAt: now,
       });
     }
@@ -145,6 +148,7 @@ export const upsert = mutation({
     apr: v.optional(v.number()),
     minPayment: v.optional(v.number()),
     includeInPaydown: v.boolean(),
+    includeInCashOnHand: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const ownerId = await requireOwner(ctx);
@@ -165,6 +169,8 @@ export const upsert = mutation({
     const now = Date.now();
     const includeInPaydown =
       args.kind === "credit" || args.kind === "loan" ? args.includeInPaydown : false;
+    const includeInCashOnHand =
+      args.kind === "cash" ? (args.includeInCashOnHand ?? true) : false;
 
     if (args.accountId) {
       const account = await ctx.db.get(args.accountId);
@@ -180,6 +186,7 @@ export const upsert = mutation({
         apr: args.apr,
         minPayment: args.minPayment,
         includeInPaydown,
+        includeInCashOnHand,
         updatedAt: now,
       });
       if (previous !== next) {
@@ -208,6 +215,7 @@ export const upsert = mutation({
       minPayment: args.minPayment,
       priority: maxPriority + 1,
       includeInPaydown,
+      includeInCashOnHand,
       updatedAt: now,
     });
     const settings = await ctx.db
