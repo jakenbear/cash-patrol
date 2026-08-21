@@ -195,18 +195,28 @@ function ExportActions({
 
 function AccountProgress({ account, days }: { account: AccountTrend; days: DailyPoint[] }) {
   const falling = account.delta <= 0;
+  const softCap = account.softCap;
+  const room =
+    softCap !== undefined ? Math.round((softCap - account.current) * 100) / 100 : undefined;
   return (
     <section className="panel chart-panel account-progress">
       <div className="account-progress-head">
         <div>
           <strong>{account.name}</strong>
-          <small>
-            {account.kind === "loan" ? "Loan" : "Credit card"}
-            {account.softCap !== undefined ? ` · soft cap ${formatMoney(account.softCap)}` : ""}
-          </small>
+          <small>{account.kind === "loan" ? "Loan" : "Credit card"}</small>
         </div>
         <div className="account-progress-value">
           <strong>{formatMoney(account.current)}</strong>
+          {softCap !== undefined && (
+            <span className="soft-cap-amount">
+              Soft cap {formatMoney(softCap)}
+              {room !== undefined && (
+                <span className={room >= 0 ? "soft-cap-room" : "soft-cap-over"}>
+                  {room >= 0 ? ` · ${formatMoney(room)} under` : ` · ${formatMoney(Math.abs(room))} over`}
+                </span>
+              )}
+            </span>
+          )}
           <span className={account.delta < 0 ? "delta down" : account.delta > 0 ? "delta up" : "delta"}>
             {account.delta > 0 ? "+" : ""}
             {formatMoney(account.delta)} since {formatShortDate(account.dates[0] ?? days[0]?.date ?? "")}
@@ -287,8 +297,16 @@ function AccountSpark({
   const padBottom = 20;
   const softCapValue =
     typeof softCap === "number" && Number.isFinite(softCap) ? softCap : undefined;
-  const max = Math.max(...values, softCapValue ?? 0, 1);
-  const min = Math.min(...values, softCapValue ?? Infinity, 0);
+  // Zoom around the series (and soft cap) so a tight gap stays readable.
+  // Without this, pinning min at 0 crowds balances near the top of the chart.
+  const rawMax = Math.max(...values, softCapValue ?? 0, 1);
+  const rawMin =
+    softCapValue !== undefined
+      ? Math.min(...values, softCapValue)
+      : Math.min(...values, 0);
+  const pad = Math.max((rawMax - rawMin) * 0.2, rawMax * 0.04, 1);
+  const max = rawMax + pad;
+  const min = Math.max(0, rawMin - pad);
   const span = Math.max(max - min, 1);
   const innerHeight = height - padTop - padBottom;
   const yFor = (value: number) => padTop + innerHeight - ((value - min) / span) * innerHeight;

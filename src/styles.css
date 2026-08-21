@@ -986,14 +986,24 @@ button.summary-card {
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
 }
+.soft-cap-amount {
+  color: var(--red);
+  font-size: .78rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.soft-cap-amount .soft-cap-room { color: var(--accent); font-weight: 600; }
+.soft-cap-amount .soft-cap-over { color: var(--red); font-weight: 600; }
+.notepad-label .soft-cap-amount { font-size: .72rem; }
+.notepad-value .soft-cap-amount { font-size: .72rem; }
 .account-spark { width: 100%; height: auto; }
 .account-spark path { stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
 .account-spark.is-down path { stroke: var(--accent); }
 .account-spark.is-up path { stroke: var(--orange); }
 .account-spark .soft-cap-line {
   stroke: var(--red);
-  stroke-width: 1.5;
-  stroke-dasharray: 4 3;
+  stroke-width: 1.75;
+  stroke-dasharray: 5 3;
   stroke-linecap: round;
 }
 

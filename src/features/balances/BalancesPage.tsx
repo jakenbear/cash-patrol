@@ -345,6 +345,9 @@ function AccountRow({
           </span>
           <span className="notepad-value">
             <span className="balance-button">{formatMoney(account.balance)}</span>
+            {account.kind === "credit" && account.softCap !== undefined && (
+              <span className="soft-cap-amount">Soft cap {formatMoney(account.softCap)}</span>
+            )}
             {change !== null && change !== 0 && (
               <span className={change < 0 ? "delta down" : "delta up"}>
                 {change > 0 ? "+" : ""}
