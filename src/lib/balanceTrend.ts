@@ -17,6 +17,7 @@ export type AccountTrend = {
   delta: number;
   series: number[];
   dates: string[];
+  softCap?: number;
 };
 
 export type DailyTrend = {
@@ -108,6 +109,7 @@ function accountTrends(accounts: Account[], days: DailyPoint[]): AccountTrend[] 
         delta: current - first,
         series: series.length > 0 ? series : [current],
         dates: dates.length > 0 ? dates : days[days.length - 1] ? [days[days.length - 1].date] : [],
+        softCap: account.softCap,
       };
     });
 }

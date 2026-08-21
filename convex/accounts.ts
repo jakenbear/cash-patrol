@@ -147,6 +147,7 @@ export const upsert = mutation({
     balance: v.number(),
     apr: v.optional(v.number()),
     minPayment: v.optional(v.number()),
+    softCap: v.optional(v.number()),
     includeInPaydown: v.boolean(),
     includeInCashOnHand: v.optional(v.boolean()),
   },
@@ -165,12 +166,19 @@ export const upsert = mutation({
     if (args.minPayment !== undefined && args.minPayment < 0) {
       throw new ConvexError("Minimum payment cannot be negative.");
     }
+    if (args.softCap !== undefined && (!Number.isFinite(args.softCap) || args.softCap < 0)) {
+      throw new ConvexError("Soft cap must be zero or a positive number.");
+    }
 
     const now = Date.now();
     const includeInPaydown =
       args.kind === "credit" || args.kind === "loan" ? args.includeInPaydown : false;
     const includeInCashOnHand =
       args.kind === "cash" ? (args.includeInCashOnHand ?? true) : false;
+    const softCap =
+      args.kind === "credit" && args.softCap !== undefined
+        ? Math.round(args.softCap * 100) / 100
+        : undefined;
 
     if (args.accountId) {
       const account = await ctx.db.get(args.accountId);
@@ -185,6 +193,7 @@ export const upsert = mutation({
         balance: next,
         apr: args.apr,
         minPayment: args.minPayment,
+        softCap,
         includeInPaydown,
         includeInCashOnHand,
         updatedAt: now,
@@ -213,6 +222,7 @@ export const upsert = mutation({
       balance: Math.round(args.balance * 100) / 100,
       apr: args.apr,
       minPayment: args.minPayment,
+      softCap,
       priority: maxPriority + 1,
       includeInPaydown,
       includeInCashOnHand,

@@ -8,6 +8,7 @@ export type Account = {
   balance: number;
   apr?: number;
   minPayment?: number;
+  softCap?: number;
   priority: number;
   includeInPaydown: boolean;
   includeInCashOnHand?: boolean;
@@ -85,6 +86,7 @@ export const patrolApi = {
       balance: number;
       apr?: number;
       minPayment?: number;
+      softCap?: number;
       includeInPaydown: boolean;
       includeInCashOnHand?: boolean;
     },

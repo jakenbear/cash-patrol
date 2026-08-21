@@ -18,6 +18,8 @@ export default defineSchema({
     balance: v.number(),
     apr: v.optional(v.number()),
     minPayment: v.optional(v.number()),
+    /** Optional spending ceiling for credit cards; drawn as a line on the trend chart. */
+    softCap: v.optional(v.number()),
     priority: v.number(),
     includeInPaydown: v.boolean(),
     /** When false, excluded from cash-on-hand totals. Missing means true for cash. */

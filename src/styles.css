@@ -990,6 +990,12 @@ button.summary-card {
 .account-spark path { stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
 .account-spark.is-down path { stroke: var(--accent); }
 .account-spark.is-up path { stroke: var(--orange); }
+.account-spark .soft-cap-line {
+  stroke: var(--red);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 3;
+  stroke-linecap: round;
+}
 
 .trend-summary {
   grid-template-columns: repeat(3, 1fr);

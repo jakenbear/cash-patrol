@@ -200,7 +200,10 @@ function AccountProgress({ account, days }: { account: AccountTrend; days: Daily
       <div className="account-progress-head">
         <div>
           <strong>{account.name}</strong>
-          <small>{account.kind === "loan" ? "Loan" : "Credit card"}</small>
+          <small>
+            {account.kind === "loan" ? "Loan" : "Credit card"}
+            {account.softCap !== undefined ? ` · soft cap ${formatMoney(account.softCap)}` : ""}
+          </small>
         </div>
         <div className="account-progress-value">
           <strong>{formatMoney(account.current)}</strong>
@@ -210,7 +213,12 @@ function AccountProgress({ account, days }: { account: AccountTrend; days: Daily
           </span>
         </div>
       </div>
-      <AccountSpark values={account.series} dates={account.dates} falling={falling} />
+      <AccountSpark
+        values={account.series}
+        dates={account.dates}
+        falling={falling}
+        softCap={account.softCap}
+      />
     </section>
   );
 }
@@ -265,24 +273,29 @@ function AccountSpark({
   values,
   dates,
   falling,
+  softCap,
 }: {
   values: number[];
   dates: string[];
   falling: boolean;
+  softCap?: number;
 }) {
   const width = 320;
   const height = 88;
   const padX = 12;
   const padTop = 8;
   const padBottom = 20;
-  const max = Math.max(...values, 1);
-  const min = Math.min(...values, 0);
+  const softCapValue =
+    typeof softCap === "number" && Number.isFinite(softCap) ? softCap : undefined;
+  const max = Math.max(...values, softCapValue ?? 0, 1);
+  const min = Math.min(...values, softCapValue ?? Infinity, 0);
   const span = Math.max(max - min, 1);
   const innerHeight = height - padTop - padBottom;
+  const yFor = (value: number) => padTop + innerHeight - ((value - min) / span) * innerHeight;
   const d = values
     .map((value, index) => {
       const x = padX + (index / Math.max(values.length - 1, 1)) * (width - padX * 2);
-      const y = padTop + innerHeight - ((value - min) / span) * innerHeight;
+      const y = yFor(value);
       return `${index === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`;
     })
     .join(" ");
@@ -290,14 +303,28 @@ function AccountSpark({
   const labelDates = [dates[0], dates[Math.floor((dates.length - 1) / 2)], dates[dates.length - 1]].filter(
     (date, index, list): date is string => !!date && list.indexOf(date) === index,
   );
+  const softCapY = softCapValue !== undefined ? yFor(softCapValue) : null;
 
   return (
     <svg
       className={`account-spark ${falling ? "is-down" : "is-up"}`}
       viewBox={`0 0 ${width} ${height}`}
       role="img"
-      aria-label="Daily balance"
+      aria-label={
+        softCapValue !== undefined
+          ? `Daily balance with soft cap ${softCapValue}`
+          : "Daily balance"
+      }
     >
+      {softCapY !== null && (
+        <line
+          className="soft-cap-line"
+          x1={padX}
+          x2={width - padX}
+          y1={softCapY}
+          y2={softCapY}
+        />
+      )}
       <path d={d} fill="none" />
       {labelDates.map((date) => {
         const index = dates.indexOf(date);

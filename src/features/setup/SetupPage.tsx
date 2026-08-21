@@ -224,6 +224,9 @@ export function SetupPage({ dashboard }: { dashboard: DashboardData }) {
                   {account.minPayment !== undefined
                     ? ` · min ${formatMoney(account.minPayment)}`
                     : ""}
+                  {account.softCap !== undefined
+                    ? ` · soft cap ${formatMoney(account.softCap)}`
+                    : ""}
                 </small>
               </div>
               {strategy === "manual" && (
@@ -528,6 +531,7 @@ function AccountsEditor({
     balance: number;
     apr?: number;
     minPayment?: number;
+    softCap?: number;
     includeInPaydown: boolean;
     includeInCashOnHand?: boolean;
   }) => Promise<string>;
@@ -539,6 +543,7 @@ function AccountsEditor({
   const [balance, setBalance] = useState("0");
   const [apr, setApr] = useState("");
   const [minPayment, setMinPayment] = useState("");
+  const [softCap, setSoftCap] = useState("");
   const [includeInCashOnHand, setIncludeInCashOnHand] = useState(true);
   const [error, setError] = useState("");
 
@@ -551,6 +556,7 @@ function AccountsEditor({
     setBalance(String(account.balance));
     setApr(account.apr !== undefined ? String(account.apr) : "");
     setMinPayment(account.minPayment !== undefined ? String(account.minPayment) : "");
+    setSoftCap(account.softCap !== undefined ? String(account.softCap) : "");
     setIncludeInCashOnHand(account.includeInCashOnHand !== false);
     setError("");
   }
@@ -562,6 +568,7 @@ function AccountsEditor({
     setBalance("0");
     setApr("");
     setMinPayment("");
+    setSoftCap("");
     setIncludeInCashOnHand(true);
     setError("");
   }
@@ -577,6 +584,7 @@ function AccountsEditor({
         balance: Number(balance),
         apr: apr === "" ? undefined : Number(apr),
         minPayment: minPayment === "" ? undefined : Number(minPayment),
+        softCap: softCap === "" ? undefined : Number(softCap),
         includeInPaydown: kind === "credit" || kind === "loan",
         includeInCashOnHand: kind === "cash" ? includeInCashOnHand : false,
       });
@@ -609,6 +617,9 @@ function AccountsEditor({
                   {account.minPayment !== undefined
                     ? ` · min ${formatMoney(account.minPayment)}`
                     : ""}
+                  {account.softCap !== undefined
+                    ? ` · soft cap ${formatMoney(account.softCap)}`
+                    : ""}
                 </small>
               </div>
               <div className="row-actions">
@@ -639,6 +650,7 @@ function AccountsEditor({
                 balance={balance}
                 apr={apr}
                 minPayment={minPayment}
+                softCap={softCap}
                 includeInCashOnHand={includeInCashOnHand}
                 error={error}
                 onName={setName}
@@ -646,6 +658,7 @@ function AccountsEditor({
                 onBalance={setBalance}
                 onApr={setApr}
                 onMinPayment={setMinPayment}
+                onSoftCap={setSoftCap}
                 onIncludeInCashOnHand={setIncludeInCashOnHand}
                 onSave={save}
                 onCancel={() => setEditingId(null)}
@@ -663,6 +676,7 @@ function AccountsEditor({
           balance={balance}
           apr={apr}
           minPayment={minPayment}
+          softCap={softCap}
           includeInCashOnHand={includeInCashOnHand}
           error={error}
           onName={setName}
@@ -670,6 +684,7 @@ function AccountsEditor({
           onBalance={setBalance}
           onApr={setApr}
           onMinPayment={setMinPayment}
+          onSoftCap={setSoftCap}
           onIncludeInCashOnHand={setIncludeInCashOnHand}
           onSave={save}
           onCancel={() => setEditingId(null)}
@@ -686,6 +701,7 @@ function AccountForm({
   balance,
   apr,
   minPayment,
+  softCap,
   includeInCashOnHand,
   error,
   onName,
@@ -693,6 +709,7 @@ function AccountForm({
   onBalance,
   onApr,
   onMinPayment,
+  onSoftCap,
   onIncludeInCashOnHand,
   onSave,
   onCancel,
@@ -703,6 +720,7 @@ function AccountForm({
   balance: string;
   apr: string;
   minPayment: string;
+  softCap: string;
   includeInCashOnHand: boolean;
   error: string;
   onName: (value: string) => void;
@@ -710,6 +728,7 @@ function AccountForm({
   onBalance: (value: string) => void;
   onApr: (value: string) => void;
   onMinPayment: (value: string) => void;
+  onSoftCap: (value: string) => void;
   onIncludeInCashOnHand: (value: boolean) => void;
   onSave: (event: FormEvent) => void;
   onCancel: () => void;
@@ -764,6 +783,17 @@ function AccountForm({
             />
           </label>
         </>
+      )}
+      {kind === "credit" && (
+        <label>
+          Soft cap (optional)
+          <input
+            inputMode="decimal"
+            value={softCap}
+            onChange={(event) => onSoftCap(event.target.value)}
+            placeholder="e.g. 5000"
+          />
+        </label>
       )}
       <div className="form-actions">
         <button className="primary-button compact" type="submit">
