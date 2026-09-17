@@ -68,7 +68,7 @@ describe("AuthPage password-manager compatibility", () => {
     expect(screen.getByLabelText(/^password$/i)).toHaveValue("CorrectHorse1");
   });
 
-  it("submits credentials from FormData / the DOM, not React field state", async () => {
+  it("submits credentials as a plain object, not only FormData", async () => {
     render(<AuthPage />);
     await readyFields();
 
@@ -81,10 +81,30 @@ describe("AuthPage password-manager compatibility", () => {
     fireEvent.submit(email.closest("form")!);
 
     await waitFor(() => expect(signIn).toHaveBeenCalled());
-    const formData = signIn.mock.calls[0][1] as FormData;
-    expect(formData.get("email")).toBe("owner@example.com");
-    expect(formData.get("password")).toBe("CorrectHorse1");
-    expect(formData.get("flow")).toBe("signIn");
+    expect(signIn.mock.calls[0][0]).toBe("password");
+    expect(signIn.mock.calls[0][1]).toEqual({
+      email: "owner@example.com",
+      password: "CorrectHorse1",
+      flow: "signIn",
+    });
+  });
+
+  it("maps redacted Convex Server Error to a clear sign-in message", async () => {
+    signIn.mockRejectedValueOnce(
+      new Error("[CONVEX A(auth:signIn)] [Request ID: abc] Server Error\n  Called by client"),
+    );
+    render(<AuthPage />);
+    await readyFields();
+
+    const email = screen.getByLabelText(/^email$/i) as HTMLInputElement;
+    const password = screen.getByLabelText(/^password$/i) as HTMLInputElement;
+    nativeFill(email, "owner@example.com");
+    nativeFill(password, "CorrectHorse1");
+    fireEvent.submit(email.closest("form")!);
+
+    await waitFor(() =>
+      expect(screen.getByText(/sign-in failed\. check email and password/i)).toBeInTheDocument(),
+    );
   });
 
   it("restores password-manager fills after the login form remounts", async () => {
@@ -138,7 +158,9 @@ describe("AuthPage password-manager compatibility", () => {
     render(<AuthPage />);
     await readyFields();
 
+    const email = screen.getByLabelText(/^email$/i) as HTMLInputElement;
     const password = screen.getByLabelText(/^password$/i) as HTMLInputElement;
+    nativeFill(email, "owner@example.com");
     nativeFill(password, "CorrectHorse1");
     const nodeBefore = password;
 

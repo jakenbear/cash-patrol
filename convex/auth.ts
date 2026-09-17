@@ -6,17 +6,21 @@ const OwnerPassword = Password({
   profile(params) {
     const email = String(params.email ?? "").trim().toLowerCase();
     const ownerEmail = process.env.OWNER_EMAIL?.trim().toLowerCase();
+    const flow = String(params.flow ?? "");
 
-    if (!ownerEmail) {
-      throw new ConvexError("OWNER_EMAIL is not configured on this Convex deployment.");
-    }
-    if (email !== ownerEmail) {
-      throw new ConvexError("Registration is restricted to the tracker owner.");
+    // Only gate registration — sign-in must still reach credential checks.
+    if (flow === "signUp") {
+      if (!ownerEmail) {
+        throw new ConvexError("OWNER_EMAIL is not configured on this Convex deployment.");
+      }
+      if (email !== ownerEmail) {
+        throw new ConvexError("Registration is restricted to the tracker owner.");
+      }
     }
 
     return {
       email,
-      name: String(params.name ?? email.split("@")[0]),
+      name: String(params.name ?? email.split("@")[0] || "owner"),
     };
   },
   validatePasswordRequirements(password) {

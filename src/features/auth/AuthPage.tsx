@@ -158,6 +158,45 @@ function usePasswordRestick(formRef: RefObject<HTMLFormElement | null>) {
   return lastPasswordRef;
 }
 
+function readCredential(form: HTMLFormElement, name: "email" | "password"): string {
+  const el = form.elements.namedItem(name);
+  if (el instanceof HTMLInputElement) {
+    el.readOnly = false;
+    if (el.value) return el.value;
+  }
+  return "";
+}
+
+function friendlyAuthError(raw: string, mode: AuthMode): string {
+  const text = raw
+    .replace(/^Uncaught Error: /, "")
+    .replace(/^\[CONVEX[^\]]*\]\s*/g, "")
+    .replace(/^\[Request ID:[^\]]*\]\s*/g, "")
+    .trim();
+
+  if (/InvalidAccountId/i.test(text)) {
+    return mode === "signIn"
+      ? "No account for that email yet. Create one below if this is your first time."
+      : text;
+  }
+  if (/InvalidSecret|Invalid credentials/i.test(text)) {
+    return "Wrong password.";
+  }
+  if (/TooManyFailedAttempts/i.test(text)) {
+    return "Too many failed sign-in attempts. Wait a minute and try again.";
+  }
+  if (/restricted to the tracker owner/i.test(text)) {
+    return "This email can’t register. Use the account email set up for Cash Patrol.";
+  }
+  // Convex redacts most Error() messages from auth:signIn as "Server Error".
+  if (/Server Error/i.test(text)) {
+    return mode === "signIn"
+      ? "Sign-in failed. Check email and password, or wait a minute and try again."
+      : "Couldn’t create the account. Check the details and try again.";
+  }
+  return text || "Unable to sign in.";
+}
+
 type AuthMode = "signIn" | "signUp";
 
 export function AuthPage() {
@@ -179,42 +218,27 @@ export function AuthPage() {
     setBusy(true);
     try {
       const form = event.currentTarget;
-      const passwordInput = form.elements.namedItem("password");
-      if (
-        passwordInput instanceof HTMLInputElement &&
-        !passwordInput.value &&
-        lastPasswordRef.current
-      ) {
-        passwordInput.value = lastPasswordRef.current;
+      const saved = readDraft();
+      const email = readCredential(form, "email") || saved.email || "";
+      const password =
+        readCredential(form, "password") ||
+        lastPasswordRef.current ||
+        saved.password ||
+        "";
+
+      if (!email || !password) {
+        setError("Email and password are required.");
+        return;
       }
 
-      const formData = new FormData(form);
-      if (!formData.get("password") && lastPasswordRef.current) {
-        formData.set("password", lastPasswordRef.current);
-      }
-      formData.set("flow", mode);
-      persistDraftFromForm(form);
-      await signIn("password", formData);
+      // Plain object avoids FormData/autofill edge cases with unmanaged inputs.
+      writeDraft({ email, password });
+      await signIn("password", { email, password, flow: mode });
       clearDraft();
       lastPasswordRef.current = "";
     } catch (caught) {
-      const raw =
-        caught instanceof Error
-          ? caught.message.replace(/^Uncaught Error: /, "").replace(/^\[CONVEX[^\]]*\]\s*/g, "")
-          : "Unable to sign in.";
-      if (/InvalidAccountId/i.test(raw)) {
-        setError(
-          mode === "signIn"
-            ? "No account for that email yet. Create one below if this is your first time."
-            : raw,
-        );
-      } else if (/InvalidSecret/i.test(raw)) {
-        setError("Wrong password.");
-      } else if (/restricted to the tracker owner/i.test(raw)) {
-        setError("This email can’t register. Use the account email set up for Cash Patrol.");
-      } else {
-        setError(raw);
-      }
+      const raw = caught instanceof Error ? caught.message : "Unable to sign in.";
+      setError(friendlyAuthError(raw, mode));
     } finally {
       setBusy(false);
     }
