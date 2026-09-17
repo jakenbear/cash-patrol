@@ -20,7 +20,7 @@ const OwnerPassword = Password({
 
     return {
       email,
-      name: String(params.name ?? email.split("@")[0] || "owner"),
+      name: String(params.name ?? (email.split("@")[0] || "owner")),
     };
   },
   validatePasswordRequirements(password) {
