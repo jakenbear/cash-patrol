@@ -1,12 +1,75 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { LockKeyhole, Wallet } from "lucide-react";
+
+export const AUTH_DRAFT_KEY = "cash-patrol.auth-draft";
+
+type AuthDraft = {
+  email?: string;
+  password?: string;
+};
+
+function readDraft(): AuthDraft {
+  try {
+    const raw = sessionStorage.getItem(AUTH_DRAFT_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as AuthDraft;
+    return {
+      email: typeof parsed.email === "string" ? parsed.email : "",
+      password: typeof parsed.password === "string" ? parsed.password : "",
+    };
+  } catch {
+    return {};
+  }
+}
+
+function writeDraft(draft: AuthDraft) {
+  try {
+    sessionStorage.setItem(AUTH_DRAFT_KEY, JSON.stringify(draft));
+  } catch {
+    // Private mode / quota — ignore; login still works without draft restore.
+  }
+}
+
+function clearDraft() {
+  try {
+    sessionStorage.removeItem(AUTH_DRAFT_KEY);
+  } catch {
+    // ignore
+  }
+}
+
+function draftFromForm(form: HTMLFormElement): AuthDraft {
+  const formData = new FormData(form);
+  return {
+    email: String(formData.get("email") ?? ""),
+    password: String(formData.get("password") ?? ""),
+  };
+}
 
 export function AuthPage() {
   const { signIn } = useAuthActions();
   const [mode, setMode] = useState<"signIn" | "signUp">("signIn");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
+  // Read once per mount so remounts (auth gate / SW) restore PM fills.
+  const [draft] = useState(readDraft);
+
+  useEffect(() => {
+    // Password managers often write DOM values without reliable input events.
+    // Poll so a remount still restores the stick-fill.
+    const form = formRef.current;
+    if (!form) return;
+    const persist = () => writeDraft(draftFromForm(form));
+    persist();
+    const id = window.setInterval(persist, 150);
+    return () => window.clearInterval(id);
+  }, []);
+
+  function persistDraft(event: FormEvent<HTMLFormElement>) {
+    writeDraft(draftFromForm(event.currentTarget));
+  }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -16,7 +79,9 @@ export function AuthPage() {
       // Read from the DOM so password-manager fills stick even if React state never saw them.
       const formData = new FormData(event.currentTarget);
       formData.set("flow", mode);
+      writeDraft(draftFromForm(event.currentTarget));
       await signIn("password", formData);
+      clearDraft();
     } catch (caught) {
       const raw =
         caught instanceof Error
@@ -50,7 +115,13 @@ export function AuthPage() {
         <h1>Cash Patrol</h1>
         <p className="muted">Track balances, plan each paycheck, pay debt down.</p>
 
-        <form onSubmit={submit} className="auth-form" autoComplete="on">
+        <form
+          ref={formRef}
+          onSubmit={submit}
+          onInput={persistDraft}
+          className="auth-form"
+          autoComplete="on"
+        >
           <label htmlFor="auth-email">
             Email
             <input
@@ -62,6 +133,7 @@ export function AuthPage() {
               autoCapitalize="none"
               autoCorrect="off"
               spellCheck={false}
+              defaultValue={draft.email ?? ""}
               required
             />
           </label>
@@ -72,6 +144,7 @@ export function AuthPage() {
               name="password"
               type="password"
               autoComplete={mode === "signIn" ? "current-password" : "new-password"}
+              defaultValue={draft.password ?? ""}
               minLength={12}
               pattern={mode === "signUp" ? "(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).{12,}" : undefined}
               title={

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { AuthPage } from "./AuthPage";
+import { AuthPage, AUTH_DRAFT_KEY } from "./AuthPage";
 
 const signIn = vi.fn();
 
@@ -20,6 +20,7 @@ describe("AuthPage password-manager compatibility", () => {
   beforeEach(() => {
     signIn.mockReset();
     signIn.mockResolvedValue(undefined);
+    sessionStorage.clear();
   });
 
   it("exposes username / current-password autocomplete for sign-in", () => {
@@ -69,13 +70,26 @@ describe("AuthPage password-manager compatibility", () => {
     expect(formData.get("flow")).toBe("signIn");
   });
 
-  it("does not bind controlled value props that would wipe autofill", () => {
+  it("restores password-manager fills after the login form remounts", () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const first = render(<AuthPage />);
+    const email = screen.getByLabelText(/^email$/i) as HTMLInputElement;
+    const password = screen.getByLabelText(/^password$/i) as HTMLInputElement;
+
+    // Silent fill: set DOM value with no events (how some password managers write).
+    const proto = Object.getPrototypeOf(email);
+    const descriptor = Object.getOwnPropertyDescriptor(proto, "value");
+    descriptor?.set?.call(email, "owner@example.com");
+    descriptor?.set?.call(password, "CorrectHorse1");
+
+    vi.advanceTimersByTime(200);
+    expect(sessionStorage.getItem(AUTH_DRAFT_KEY)).toContain("owner@example.com");
+
+    first.unmount();
     render(<AuthPage />);
 
-    const email = screen.getByLabelText(/^email$/i);
-    const password = screen.getByLabelText(/^password$/i);
-
-    expect(email).not.toHaveAttribute("value");
-    expect(password).not.toHaveAttribute("value");
+    expect(screen.getByLabelText(/^email$/i)).toHaveValue("owner@example.com");
+    expect(screen.getByLabelText(/^password$/i)).toHaveValue("CorrectHorse1");
+    vi.useRealTimers();
   });
 });

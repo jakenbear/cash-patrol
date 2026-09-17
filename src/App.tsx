@@ -1,11 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  Authenticated,
-  AuthLoading,
-  Unauthenticated,
-  useMutation,
-  useQuery,
-} from "convex/react";
+import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { useAuthActions } from "@convex-dev/auth/react";
 import {
   Download,
@@ -33,19 +27,17 @@ import {
 } from "./lib/paycheckPlan";
 
 export default function App() {
-  return (
-    <>
-      <AuthLoading>
-        <LoadingScreen />
-      </AuthLoading>
-      <Unauthenticated>
-        <AuthPage />
-      </Unauthenticated>
-      <Authenticated>
-        <Patrol />
-      </Authenticated>
-    </>
-  );
+  const { isLoading, isAuthenticated } = useConvexAuth();
+  // Latch: once auth has resolved, keep AuthPage mounted across loading flickers.
+  // AuthLoading/Unauthenticated unmount the form and wipe password-manager fills.
+  const [authResolved, setAuthResolved] = useState(false);
+  if (!isLoading && !authResolved) {
+    setAuthResolved(true);
+  }
+
+  if (isAuthenticated) return <Patrol />;
+  if (!authResolved) return <LoadingScreen />;
+  return <AuthPage />;
 }
 
 function Patrol() {
