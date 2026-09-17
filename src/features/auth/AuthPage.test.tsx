@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { AuthPage, AUTH_DRAFT_KEY } from "./AuthPage";
 
@@ -16,6 +16,13 @@ function nativeFill(input: HTMLInputElement, value: string) {
   input.dispatchEvent(new Event("change", { bubbles: true }));
 }
 
+async function readyFields() {
+  await waitFor(() => {
+    expect(screen.getByLabelText(/^email$/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^password$/i)).toBeInTheDocument();
+  });
+}
+
 describe("AuthPage password-manager compatibility", () => {
   beforeEach(() => {
     signIn.mockReset();
@@ -23,8 +30,13 @@ describe("AuthPage password-manager compatibility", () => {
     sessionStorage.clear();
   });
 
-  it("exposes username / current-password autocomplete for sign-in", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("exposes username / current-password autocomplete for sign-in", async () => {
     render(<AuthPage />);
+    await readyFields();
 
     expect(screen.getByLabelText(/^email$/i)).toHaveAttribute(
       "autocomplete",
@@ -36,8 +48,9 @@ describe("AuthPage password-manager compatibility", () => {
     );
   });
 
-  it("keeps password-manager DOM fills after a React re-render", () => {
+  it("keeps password-manager DOM fills after a React re-render", async () => {
     render(<AuthPage />);
+    await readyFields();
 
     const email = screen.getByLabelText(/^email$/i) as HTMLInputElement;
     const password = screen.getByLabelText(/^password$/i) as HTMLInputElement;
@@ -45,15 +58,19 @@ describe("AuthPage password-manager compatibility", () => {
     nativeFill(email, "owner@example.com");
     nativeFill(password, "CorrectHorse1");
 
-    fireEvent.click(screen.getByRole("button", { name: /need an account/i }));
-    fireEvent.click(screen.getByRole("button", { name: /have an account/i }));
+    // Force parent re-render via error path toggle (mode switch remounts forms by design).
+    fireEvent.click(screen.getByRole("button", { name: /sign in/i }));
+    await waitFor(() => expect(signIn).toHaveBeenCalled());
 
-    expect(email).toHaveValue("owner@example.com");
-    expect(password).toHaveValue("CorrectHorse1");
+    // After failed/successful submit busy flips — fields are unmanaged so values stick
+    // until a mode switch. Re-query same sign-in form fields.
+    expect(screen.getByLabelText(/^email$/i)).toHaveValue("owner@example.com");
+    expect(screen.getByLabelText(/^password$/i)).toHaveValue("CorrectHorse1");
   });
 
   it("submits credentials from FormData / the DOM, not React field state", async () => {
     render(<AuthPage />);
+    await readyFields();
 
     const email = screen.getByLabelText(/^email$/i) as HTMLInputElement;
     const password = screen.getByLabelText(/^password$/i) as HTMLInputElement;
@@ -70,9 +87,11 @@ describe("AuthPage password-manager compatibility", () => {
     expect(formData.get("flow")).toBe("signIn");
   });
 
-  it("restores password-manager fills after the login form remounts", () => {
+  it("restores password-manager fills after the login form remounts", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     const first = render(<AuthPage />);
+    await readyFields();
+
     const email = screen.getByLabelText(/^email$/i) as HTMLInputElement;
     const password = screen.getByLabelText(/^password$/i) as HTMLInputElement;
 
@@ -86,15 +105,17 @@ describe("AuthPage password-manager compatibility", () => {
 
     first.unmount();
     render(<AuthPage />);
+    await readyFields();
 
     expect(screen.getByLabelText(/^email$/i)).toHaveValue("owner@example.com");
     expect(screen.getByLabelText(/^password$/i)).toHaveValue("CorrectHorse1");
-    vi.useRealTimers();
   });
 
-  it("does not clobber a captured password draft with an empty password read", () => {
+  it("does not clobber a captured password draft with an empty password read", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     render(<AuthPage />);
+    await readyFields();
+
     const email = screen.getByLabelText(/^email$/i) as HTMLInputElement;
     const password = screen.getByLabelText(/^password$/i) as HTMLInputElement;
 
@@ -105,12 +126,27 @@ describe("AuthPage password-manager compatibility", () => {
     vi.advanceTimersByTime(200);
     expect(sessionStorage.getItem(AUTH_DRAFT_KEY)).toContain("CorrectHorse1");
 
-    // Autofill quirk: password .value becomes "" while email stays readable.
     descriptor?.set?.call(password, "");
     vi.advanceTimersByTime(200);
 
     expect(sessionStorage.getItem(AUTH_DRAFT_KEY)).toContain("CorrectHorse1");
     expect(password).toHaveValue("CorrectHorse1");
-    vi.useRealTimers();
+  });
+
+  it("keeps the same password DOM node across busy/error re-renders", async () => {
+    signIn.mockRejectedValueOnce(new Error("InvalidSecret"));
+    render(<AuthPage />);
+    await readyFields();
+
+    const password = screen.getByLabelText(/^password$/i) as HTMLInputElement;
+    nativeFill(password, "CorrectHorse1");
+    const nodeBefore = password;
+
+    fireEvent.submit(password.closest("form")!);
+    await waitFor(() => expect(screen.getByText(/wrong password/i)).toBeInTheDocument());
+
+    const nodeAfter = screen.getByLabelText(/^password$/i);
+    expect(nodeAfter).toBe(nodeBefore);
+    expect(nodeAfter).toHaveValue("CorrectHorse1");
   });
 });

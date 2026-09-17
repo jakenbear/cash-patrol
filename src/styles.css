@@ -223,6 +223,7 @@ input:-webkit-autofill:focus {
   transition: background-color 99999s ease-out;
 }
 .field-hint { color: var(--muted); font-size: .72rem; font-weight: 400; line-height: 1.4; }
+.unmanaged-field { display: contents; }
 .primary-button {
   display: inline-flex;
   min-height: 3.2rem;

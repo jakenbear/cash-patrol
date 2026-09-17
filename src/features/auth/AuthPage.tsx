@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent, type RefObject } from "react";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { LockKeyhole, Wallet } from "lucide-react";
 
@@ -27,7 +27,7 @@ function writeDraft(draft: AuthDraft) {
   try {
     sessionStorage.setItem(AUTH_DRAFT_KEY, JSON.stringify(draft));
   } catch {
-    // Private mode / quota — ignore; login still works without draft restore.
+    // ignore
   }
 }
 
@@ -59,69 +59,74 @@ function persistDraftFromForm(form: HTMLFormElement) {
   writeDraft(mergeDraft(draftFromForm(form)));
 }
 
-/**
- * Isolate credential inputs so parent re-renders (error/busy/auth latch) do not
- * reconcile type=password nodes. React writing node.value when autofill still
- * reports "" is what wipes 1Password password dots while leaving email intact.
- */
-const StableEmailInput = memo(function StableEmailInput({
-  defaultValue,
-}: {
-  defaultValue: string;
-}) {
-  return (
-    <input
-      id="auth-email"
-      name="email"
-      type="email"
-      inputMode="email"
-      autoComplete="username"
-      autoCapitalize="none"
-      autoCorrect="off"
-      spellCheck={false}
-      defaultValue={defaultValue}
-      required
-    />
-  );
-});
-
-const StablePasswordInput = memo(function StablePasswordInput({
-  autoComplete,
-  defaultValue,
-  minLength,
-  pattern,
-  title,
-}: {
+type FieldSpec = {
+  id: string;
+  name: string;
+  type: "email" | "password";
   autoComplete: string;
-  defaultValue: string;
+  defaultValue?: string;
+  required?: boolean;
   minLength?: number;
   pattern?: string;
   title?: string;
-}) {
-  return (
-    <input
-      id="auth-password"
-      name="password"
-      type="password"
-      autoComplete={autoComplete}
-      defaultValue={defaultValue}
-      minLength={minLength}
-      pattern={pattern}
-      title={title}
-      required
-    />
-  );
-});
+  inputMode?: string;
+};
 
-export function AuthPage() {
-  const { signIn } = useAuthActions();
-  const [mode, setMode] = useState<"signIn" | "signUp">("signIn");
-  const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
-  const formRef = useRef<HTMLFormElement>(null);
-  const lastPassword = useRef("");
-  // Read once per mount so remounts can restore PM fills.
-  const [draft] = useState(readDraft);
+/**
+ * Create the input once in the DOM and never hand it to React's reconciler.
+ * React updating type=password while autofill still reports value="" is what
+ * wipes 1Password password fills (email usually survives).
+ */
+function UnmanagedField({ spec }: { spec: FieldSpec }) {
+  const slotRef = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    const slot = slotRef.current;
+    if (!slot) return;
+
+    const input = document.createElement("input");
+    input.id = spec.id;
+    input.name = spec.name;
+    input.type = spec.type;
+    input.setAttribute("autocomplete", spec.autoComplete);
+    if (spec.defaultValue) input.value = spec.defaultValue;
+    if (spec.required) input.required = true;
+    if (spec.minLength != null) input.minLength = spec.minLength;
+    if (spec.pattern) input.pattern = spec.pattern;
+    if (spec.title) input.title = spec.title;
+    if (spec.inputMode) input.inputMode = spec.inputMode as HTMLInputElement["inputMode"];
+    if (spec.type === "email") {
+      input.setAttribute("autocapitalize", "off");
+      input.setAttribute("autocorrect", "off");
+      input.spellcheck = false;
+    }
+
+    // Unlock on focus / shortly after mount so PMs and bots can fill.
+    input.readOnly = true;
+    const unlock = () => {
+      input.readOnly = false;
+    };
+    input.addEventListener("focus", unlock);
+    input.addEventListener("pointerdown", unlock);
+    const unlockTimer = window.setTimeout(unlock, 50);
+
+    slot.replaceChildren(input);
+
+    return () => {
+      window.clearTimeout(unlockTimer);
+      input.removeEventListener("focus", unlock);
+      input.removeEventListener("pointerdown", unlock);
+      input.remove();
+    };
+    // Intentional: mount once per field identity; do not recreate on parent re-render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- unmanaged DOM node must stay stable
+  }, [spec.id, spec.name, spec.type, spec.autoComplete]);
+
+  return <span ref={slotRef} className="unmanaged-field" />;
+}
+
+function usePasswordRestick(formRef: RefObject<HTMLFormElement | null>) {
+  const lastPasswordRef = useRef("");
 
   useEffect(() => {
     const form = formRef.current;
@@ -131,15 +136,14 @@ export function AuthPage() {
       const passwordInput = form.elements.namedItem("password");
       if (passwordInput instanceof HTMLInputElement) {
         if (passwordInput.value) {
-          lastPassword.current = passwordInput.value;
-        } else if (lastPassword.current) {
-          // Re-apply if React/autofill quirk cleared a password we already saw.
-          passwordInput.value = lastPassword.current;
+          lastPasswordRef.current = passwordInput.value;
+        } else if (lastPasswordRef.current) {
+          passwordInput.value = lastPasswordRef.current;
         } else {
           const saved = readDraft().password;
           if (saved) {
             passwordInput.value = saved;
-            lastPassword.current = saved;
+            lastPasswordRef.current = saved;
           }
         }
       }
@@ -149,7 +153,21 @@ export function AuthPage() {
     persistAndRestick();
     const id = window.setInterval(persistAndRestick, 150);
     return () => window.clearInterval(id);
-  }, []);
+  }, [formRef]);
+
+  return lastPasswordRef;
+}
+
+type AuthMode = "signIn" | "signUp";
+
+export function AuthPage() {
+  const { signIn } = useAuthActions();
+  const [mode, setMode] = useState<AuthMode>("signIn");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
+  const lastPasswordRef = usePasswordRestick(formRef);
+  const [draft] = useState(readDraft);
 
   function persistDraft(event: FormEvent<HTMLFormElement>) {
     persistDraftFromForm(event.currentTarget);
@@ -165,20 +183,20 @@ export function AuthPage() {
       if (
         passwordInput instanceof HTMLInputElement &&
         !passwordInput.value &&
-        lastPassword.current
+        lastPasswordRef.current
       ) {
-        passwordInput.value = lastPassword.current;
+        passwordInput.value = lastPasswordRef.current;
       }
 
       const formData = new FormData(form);
-      if (!formData.get("password") && lastPassword.current) {
-        formData.set("password", lastPassword.current);
+      if (!formData.get("password") && lastPasswordRef.current) {
+        formData.set("password", lastPasswordRef.current);
       }
       formData.set("flow", mode);
       persistDraftFromForm(form);
       await signIn("password", formData);
       clearDraft();
-      lastPassword.current = "";
+      lastPasswordRef.current = "";
     } catch (caught) {
       const raw =
         caught instanceof Error
@@ -212,42 +230,104 @@ export function AuthPage() {
         <h1>Cash Patrol</h1>
         <p className="muted">Track balances, plan each paycheck, pay debt down.</p>
 
-        <form
-          ref={formRef}
-          onSubmit={submit}
-          onInput={persistDraft}
-          className="auth-form"
-          autoComplete="on"
-        >
-          <label htmlFor="auth-email">
-            Email
-            <StableEmailInput defaultValue={draft.email ?? ""} />
-          </label>
-          <label htmlFor="auth-password">
-            Password
-            <StablePasswordInput
-              autoComplete={mode === "signIn" ? "current-password" : "new-password"}
-              defaultValue={draft.password ?? ""}
-              minLength={12}
-              pattern={mode === "signUp" ? "(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).{12,}" : undefined}
-              title={
-                mode === "signUp"
-                  ? "Use at least 12 characters with uppercase, lowercase, and a number."
-                  : undefined
-              }
-            />
-            {mode === "signUp" && (
+        {/*
+          Separate sign-in vs sign-up forms (1Password guidance): do not churn
+          the same password field between current-password and new-password.
+        */}
+        {mode === "signIn" ? (
+          <form
+            key="sign-in"
+            ref={formRef}
+            method="post"
+            onSubmit={submit}
+            onInput={persistDraft}
+            className="auth-form"
+            autoComplete="on"
+          >
+            <label htmlFor="auth-email">
+              Email
+              <UnmanagedField
+                spec={{
+                  id: "auth-email",
+                  name: "email",
+                  type: "email",
+                  autoComplete: "username",
+                  defaultValue: draft.email ?? "",
+                  required: true,
+                  inputMode: "email",
+                }}
+              />
+            </label>
+            <label htmlFor="auth-password">
+              Password
+              <UnmanagedField
+                spec={{
+                  id: "auth-password",
+                  name: "password",
+                  type: "password",
+                  autoComplete: "current-password",
+                  defaultValue: draft.password ?? "",
+                  required: true,
+                  minLength: 12,
+                }}
+              />
+            </label>
+            {error && <p className="form-error">{error}</p>}
+            <button className="primary-button" type="submit" disabled={busy}>
+              <LockKeyhole size={18} aria-hidden="true" />
+              {busy ? "Working…" : "Sign in"}
+            </button>
+          </form>
+        ) : (
+          <form
+            key="sign-up"
+            ref={formRef}
+            method="post"
+            onSubmit={submit}
+            onInput={persistDraft}
+            className="auth-form"
+            autoComplete="on"
+          >
+            <label htmlFor="auth-email-new">
+              Email
+              <UnmanagedField
+                spec={{
+                  id: "auth-email-new",
+                  name: "email",
+                  type: "email",
+                  autoComplete: "username",
+                  defaultValue: draft.email ?? "",
+                  required: true,
+                  inputMode: "email",
+                }}
+              />
+            </label>
+            <label htmlFor="auth-password-new">
+              Password
+              <UnmanagedField
+                spec={{
+                  id: "auth-password-new",
+                  name: "password",
+                  type: "password",
+                  autoComplete: "new-password",
+                  defaultValue: draft.password ?? "",
+                  required: true,
+                  minLength: 12,
+                  pattern: "(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).{12,}",
+                  title: "Use at least 12 characters with uppercase, lowercase, and a number.",
+                }}
+              />
               <small className="field-hint">
                 At least 12 characters with uppercase, lowercase, and a number.
               </small>
-            )}
-          </label>
-          {error && <p className="form-error">{error}</p>}
-          <button className="primary-button" type="submit" disabled={busy}>
-            <LockKeyhole size={18} aria-hidden="true" />
-            {busy ? "Working…" : mode === "signIn" ? "Sign in" : "Create account"}
-          </button>
-        </form>
+            </label>
+            {error && <p className="form-error">{error}</p>}
+            <button className="primary-button" type="submit" disabled={busy}>
+              <LockKeyhole size={18} aria-hidden="true" />
+              {busy ? "Working…" : "Create account"}
+            </button>
+          </form>
+        )}
 
         <button
           className="text-button"
