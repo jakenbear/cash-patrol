@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { memo, useEffect, useRef, useState, type FormEvent } from "react";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { LockKeyhole, Wallet } from "lucide-react";
 
@@ -47,28 +47,112 @@ function draftFromForm(form: HTMLFormElement): AuthDraft {
   };
 }
 
+/** Keep non-empty values — password autofill often reads back as "" until focus. */
+function mergeDraft(next: AuthDraft, prev: AuthDraft = readDraft()): AuthDraft {
+  return {
+    email: next.email || prev.email || "",
+    password: next.password || prev.password || "",
+  };
+}
+
+function persistDraftFromForm(form: HTMLFormElement) {
+  writeDraft(mergeDraft(draftFromForm(form)));
+}
+
+/**
+ * Isolate credential inputs so parent re-renders (error/busy/auth latch) do not
+ * reconcile type=password nodes. React writing node.value when autofill still
+ * reports "" is what wipes 1Password password dots while leaving email intact.
+ */
+const StableEmailInput = memo(function StableEmailInput({
+  defaultValue,
+}: {
+  defaultValue: string;
+}) {
+  return (
+    <input
+      id="auth-email"
+      name="email"
+      type="email"
+      inputMode="email"
+      autoComplete="username"
+      autoCapitalize="none"
+      autoCorrect="off"
+      spellCheck={false}
+      defaultValue={defaultValue}
+      required
+    />
+  );
+});
+
+const StablePasswordInput = memo(function StablePasswordInput({
+  autoComplete,
+  defaultValue,
+  minLength,
+  pattern,
+  title,
+}: {
+  autoComplete: string;
+  defaultValue: string;
+  minLength?: number;
+  pattern?: string;
+  title?: string;
+}) {
+  return (
+    <input
+      id="auth-password"
+      name="password"
+      type="password"
+      autoComplete={autoComplete}
+      defaultValue={defaultValue}
+      minLength={minLength}
+      pattern={pattern}
+      title={title}
+      required
+    />
+  );
+});
+
 export function AuthPage() {
   const { signIn } = useAuthActions();
   const [mode, setMode] = useState<"signIn" | "signUp">("signIn");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
-  // Read once per mount so remounts (auth gate / SW) restore PM fills.
+  const lastPassword = useRef("");
+  // Read once per mount so remounts can restore PM fills.
   const [draft] = useState(readDraft);
 
   useEffect(() => {
-    // Password managers often write DOM values without reliable input events.
-    // Poll so a remount still restores the stick-fill.
     const form = formRef.current;
     if (!form) return;
-    const persist = () => writeDraft(draftFromForm(form));
-    persist();
-    const id = window.setInterval(persist, 150);
+
+    const persistAndRestick = () => {
+      const passwordInput = form.elements.namedItem("password");
+      if (passwordInput instanceof HTMLInputElement) {
+        if (passwordInput.value) {
+          lastPassword.current = passwordInput.value;
+        } else if (lastPassword.current) {
+          // Re-apply if React/autofill quirk cleared a password we already saw.
+          passwordInput.value = lastPassword.current;
+        } else {
+          const saved = readDraft().password;
+          if (saved) {
+            passwordInput.value = saved;
+            lastPassword.current = saved;
+          }
+        }
+      }
+      persistDraftFromForm(form);
+    };
+
+    persistAndRestick();
+    const id = window.setInterval(persistAndRestick, 150);
     return () => window.clearInterval(id);
   }, []);
 
   function persistDraft(event: FormEvent<HTMLFormElement>) {
-    writeDraft(draftFromForm(event.currentTarget));
+    persistDraftFromForm(event.currentTarget);
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -76,12 +160,25 @@ export function AuthPage() {
     setError("");
     setBusy(true);
     try {
-      // Read from the DOM so password-manager fills stick even if React state never saw them.
-      const formData = new FormData(event.currentTarget);
+      const form = event.currentTarget;
+      const passwordInput = form.elements.namedItem("password");
+      if (
+        passwordInput instanceof HTMLInputElement &&
+        !passwordInput.value &&
+        lastPassword.current
+      ) {
+        passwordInput.value = lastPassword.current;
+      }
+
+      const formData = new FormData(form);
+      if (!formData.get("password") && lastPassword.current) {
+        formData.set("password", lastPassword.current);
+      }
       formData.set("flow", mode);
-      writeDraft(draftFromForm(event.currentTarget));
+      persistDraftFromForm(form);
       await signIn("password", formData);
       clearDraft();
+      lastPassword.current = "";
     } catch (caught) {
       const raw =
         caught instanceof Error
@@ -124,25 +221,11 @@ export function AuthPage() {
         >
           <label htmlFor="auth-email">
             Email
-            <input
-              id="auth-email"
-              name="email"
-              type="email"
-              inputMode="email"
-              autoComplete="username"
-              autoCapitalize="none"
-              autoCorrect="off"
-              spellCheck={false}
-              defaultValue={draft.email ?? ""}
-              required
-            />
+            <StableEmailInput defaultValue={draft.email ?? ""} />
           </label>
           <label htmlFor="auth-password">
             Password
-            <input
-              id="auth-password"
-              name="password"
-              type="password"
+            <StablePasswordInput
               autoComplete={mode === "signIn" ? "current-password" : "new-password"}
               defaultValue={draft.password ?? ""}
               minLength={12}
@@ -152,7 +235,6 @@ export function AuthPage() {
                   ? "Use at least 12 characters with uppercase, lowercase, and a number."
                   : undefined
               }
-              required
             />
             {mode === "signUp" && (
               <small className="field-hint">

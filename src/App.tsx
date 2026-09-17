@@ -28,15 +28,10 @@ import {
 
 export default function App() {
   const { isLoading, isAuthenticated } = useConvexAuth();
-  // Latch: once auth has resolved, keep AuthPage mounted across loading flickers.
-  // AuthLoading/Unauthenticated unmount the form and wipe password-manager fills.
-  const [authResolved, setAuthResolved] = useState(false);
-  if (!isLoading && !authResolved) {
-    setAuthResolved(true);
-  }
-
+  // Do not use a useState auth latch here: the extra re-render reconciles
+  // type=password and wipes 1Password while email still sticks.
   if (isAuthenticated) return <Patrol />;
-  if (!authResolved) return <LoadingScreen />;
+  if (isLoading) return <LoadingScreen />;
   return <AuthPage />;
 }
 

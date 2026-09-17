@@ -76,7 +76,6 @@ describe("AuthPage password-manager compatibility", () => {
     const email = screen.getByLabelText(/^email$/i) as HTMLInputElement;
     const password = screen.getByLabelText(/^password$/i) as HTMLInputElement;
 
-    // Silent fill: set DOM value with no events (how some password managers write).
     const proto = Object.getPrototypeOf(email);
     const descriptor = Object.getOwnPropertyDescriptor(proto, "value");
     descriptor?.set?.call(email, "owner@example.com");
@@ -90,6 +89,28 @@ describe("AuthPage password-manager compatibility", () => {
 
     expect(screen.getByLabelText(/^email$/i)).toHaveValue("owner@example.com");
     expect(screen.getByLabelText(/^password$/i)).toHaveValue("CorrectHorse1");
+    vi.useRealTimers();
+  });
+
+  it("does not clobber a captured password draft with an empty password read", () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    render(<AuthPage />);
+    const email = screen.getByLabelText(/^email$/i) as HTMLInputElement;
+    const password = screen.getByLabelText(/^password$/i) as HTMLInputElement;
+
+    const proto = Object.getPrototypeOf(email);
+    const descriptor = Object.getOwnPropertyDescriptor(proto, "value");
+    descriptor?.set?.call(email, "owner@example.com");
+    descriptor?.set?.call(password, "CorrectHorse1");
+    vi.advanceTimersByTime(200);
+    expect(sessionStorage.getItem(AUTH_DRAFT_KEY)).toContain("CorrectHorse1");
+
+    // Autofill quirk: password .value becomes "" while email stays readable.
+    descriptor?.set?.call(password, "");
+    vi.advanceTimersByTime(200);
+
+    expect(sessionStorage.getItem(AUTH_DRAFT_KEY)).toContain("CorrectHorse1");
+    expect(password).toHaveValue("CorrectHorse1");
     vi.useRealTimers();
   });
 });
