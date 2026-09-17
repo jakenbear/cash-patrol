@@ -13,6 +13,7 @@ export function AuthPage() {
     setError("");
     setBusy(true);
     try {
+      // Read from the DOM so password-manager fills stick even if React state never saw them.
       const formData = new FormData(event.currentTarget);
       formData.set("flow", mode);
       await signIn("password", formData);
@@ -49,14 +50,25 @@ export function AuthPage() {
         <h1>Cash Patrol</h1>
         <p className="muted">Track balances, plan each paycheck, pay debt down.</p>
 
-        <form onSubmit={submit} className="auth-form">
-          <label>
+        <form onSubmit={submit} className="auth-form" autoComplete="on">
+          <label htmlFor="auth-email">
             Email
-            <input name="email" type="email" autoComplete="email" required />
+            <input
+              id="auth-email"
+              name="email"
+              type="email"
+              inputMode="email"
+              autoComplete="username"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              required
+            />
           </label>
-          <label>
+          <label htmlFor="auth-password">
             Password
             <input
+              id="auth-password"
               name="password"
               type="password"
               autoComplete={mode === "signIn" ? "current-password" : "new-password"}
