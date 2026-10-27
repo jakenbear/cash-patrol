@@ -6,7 +6,7 @@ services:
     staticPublishPath: ./dist
     envVars:
       - key: NODE_VERSION
-        value: "22.22.0"
+        value: "22.23.4"
       - key: SKIP_INSTALL_DEPS
         value: "true"
       - key: VITE_CONVEX_URL
